@@ -2,14 +2,15 @@
 
 > 5 分钟内完成安装并开始使用 Vibe Documents。
 
----
+***
 
 ## 前置条件
 
-- **VS Code** ≥ 1.85.0（或 Cursor 编辑器）
-- **Node.js** ≥ 18（仅开发时需要）
+* **VS Code** ≥ 1.85.0（或 Cursor 编辑器）
 
----
+* **Node.js** ≥ 18（仅开发时需要）
+
+***
 
 ## 安装方式
 
@@ -52,7 +53,7 @@ npm run dev
 
 在 VS Code 扩展侧栏搜索 **"Vibe Documents"**，点击安装即可。
 
----
+***
 
 ## 基本使用
 
@@ -61,11 +62,14 @@ npm run dev
 有以下几种方式打开预览：
 
 1. **命令面板**：按 `Ctrl+Shift+P`（Mac: `Cmd+Shift+P`），输入 `Vibe`，选择：
-   - `Vibe: Open Markdown Preview` — 在当前编辑器打开预览
-   - `Vibe: Open Markdown Preview to the Side` — 在侧边打开预览
+
+   * `Vibe: Open Markdown Preview` — 在当前编辑器打开预览
+
+   * `Vibe: Open Markdown Preview to the Side` — 在侧边打开预览
 
 2. **快捷键**：
-   - `Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）— 在侧边打开预览
+
+   * `Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）— 在侧边打开预览
 
 3. **编辑器标题栏**：打开 `.md` 文件后，点击编辑器右上角的预览图标
 
@@ -75,56 +79,52 @@ npm run dev
 
 Vibe Documents 提供三种模式：
 
-| 模式 | 图标 | 说明 |
-|------|------|------|
-| **预览** | 👁 | 只读渲染，Cursor 风格的精美预览 |
-| **编辑** | ✏️ | 所见即所得编辑，支持数学公式和图表 |
-| **源码** | </> | 纯文本编辑，带行号和 Markdown 语法高亮 |
+| 模式     | 图标   | 说明                       |
+| ------ | ---- | ------------------------ |
+| **预览** | 👁   | 只读渲染，Cursor 风格的精美预览      |
+| **编辑** | ✏️   | 所见即所得编辑，支持数学公式和图表        |
+| **源码** | \</> | 纯文本编辑，带行号和 Markdown 语法高亮 |
 
 切换方式：
 
-- **工具栏**：点击顶部工具栏的模式按钮
-- **快捷键**：`Ctrl+Shift+E`（Mac: `Cmd+Shift+E`）循环切换三种模式
+* **工具栏**：点击顶部工具栏的模式按钮
+
+* **快捷键**：`Ctrl+Shift+E`（Mac: `Cmd+Shift+E`）循环切换三种模式
 
 ### 编辑与同步
 
 在 **编辑模式** 或 **源码模式** 下修改内容，变更会实时写回源文件。同时，在 VS Code 编辑器中直接编辑源文件，预览窗口也会实时更新。
 
----
+***
 
 ## 支持的 Markdown 特性
 
 ### 基础语法
 
-```markdown
 # 标题
+
 **粗体** *斜体* ~~删除线~~
 [链接](https://example.com)
 ![图片](./image.png)
-```
 
 ### 代码块
 
-````markdown
 ```javascript
 console.log('Shiki 高亮，支持 github-light / github-dark 双主题');
 ```
-````
 
 ### 数学公式
 
-```markdown
 行内公式：$E = mc^2$
 
 行间公式：
+
 $$
 \int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
 $$
-```
 
 ### Mermaid 图表
 
-````markdown
 ```mermaid
 graph TD
     A[开始] --> B{条件判断}
@@ -132,29 +132,27 @@ graph TD
     B -->|否| D[结束]
     C --> D
 ```
-````
 
 ### GFM 扩展
 
-```markdown
 | 表头1 | 表头2 |
-|-------|-------|
+| --- | --- |
 | 单元格 | 单元格 |
 
-- [x] 已完成任务
-- [ ] 待完成任务
-```
+* [x] 已完成任务
 
----
+* [ ] 待完成任务
+
+***
 
 ## 快捷键速查
 
-| 操作 | Windows/Linux | macOS |
-|------|---------------|-------|
+| 操作   | Windows/Linux  | macOS         |
+| ---- | -------------- | ------------- |
 | 侧边预览 | `Ctrl+Shift+V` | `Cmd+Shift+V` |
 | 切换模式 | `Ctrl+Shift+E` | `Cmd+Shift+E` |
 
----
+***
 
 ## 常见问题
 
@@ -164,8 +162,9 @@ graph TD
 
 ### Q: 图片无法显示
 
-- 确保图片路径正确（支持相对路径和绝对 URL）
-- 本地图片会通过 Webview 的 `localResourceRoots` 安全加载
+* 确保图片路径正确（支持相对路径和绝对 URL）
+
+* 本地图片会通过 Webview 的 `localResourceRoots` 安全加载
 
 ### Q: 数学公式 / Mermaid 图表无法渲染
 
@@ -175,9 +174,11 @@ graph TD
 
 Milkdown 编辑器集成了 `@milkdown/plugin-math`，在编辑模式下可直接输入 LaTeX 语法，公式会实时渲染。
 
----
+***
 
 ## 下一步
 
-- 了解 [架构设计](./Architecture.md) 深入理解工作原理
-- 参阅 [贡献指南](./Contributing.md) 加入开发
+* 了解 [架构设计](./Architecture.md) 深入理解工作原理
+
+* 参阅 [贡献指南](./Contributing.md) 加入开发
+

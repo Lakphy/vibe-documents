@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { Editor, defaultValueCtx, rootCtx, editorViewCtx } from '@milkdown/kit/core';
-import { commonmark } from '@milkdown/kit/preset/commonmark';
+import { useEffect, useRef } from 'react';
+import { Editor, defaultValueCtx, rootCtx } from '@milkdown/kit/core';
+import { commonmark, codeBlockSchema } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { history } from '@milkdown/kit/plugin/history';
@@ -8,23 +8,156 @@ import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { indent } from '@milkdown/kit/plugin/indent';
 import { trailing } from '@milkdown/kit/plugin/trailing';
 import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
+import { $view } from '@milkdown/kit/utils';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { math, mathBlockSchema } from '@milkdown/plugin-math';
-import { diagram, diagramSchema } from '@milkdown/plugin-diagram';
+import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
+import mermaidLib from 'mermaid';
+import { createRoot } from 'react-dom/client';
+import { getVsCodeApi } from './vscodeApi';
+import { ExcalidrawEditMode } from './ExcalidrawBlock';
 
-declare function acquireVsCodeApi(): {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-};
-
-let _vscode: ReturnType<typeof acquireVsCodeApi> | undefined;
-function getVsCode() {
-  if (!_vscode) {
-    _vscode = acquireVsCodeApi();
-  }
-  return _vscode;
+let mermaidInitialized = false;
+function ensureMermaidInit(isDark: boolean) {
+  mermaidLib.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'default',
+    themeVariables: isDark ? {
+      primaryColor: '#2d333b',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#444c56',
+      lineColor: '#768390',
+      secondaryColor: '#1c2128',
+      tertiaryColor: '#2d333b',
+    } : undefined,
+  });
+  mermaidInitialized = true;
 }
+
+let mermaidIdCounter = 0;
+
+function createMermaidNodeView(): NodeViewConstructor {
+  return (node, view, getPos) => {
+    const container = document.createElement('div');
+    container.className = 'mermaid-split-container';
+
+    const codePane = document.createElement('div');
+    codePane.className = 'mermaid-code-pane';
+    const labelLeft = document.createElement('div');
+    labelLeft.className = 'mermaid-label';
+    labelLeft.textContent = 'mermaid';
+    codePane.appendChild(labelLeft);
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    pre.appendChild(code);
+    codePane.appendChild(pre);
+
+    const previewPane = document.createElement('div');
+    previewPane.className = 'mermaid-preview-pane';
+
+    container.appendChild(codePane);
+    container.appendChild(previewPane);
+
+    let renderTimer: ReturnType<typeof setTimeout>;
+    const renderPreview = () => {
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(async () => {
+        const text = code.textContent || '';
+        if (!text.trim()) {
+          previewPane.innerHTML = '<div class="mermaid-error">Enter mermaid code...</div>';
+          return;
+        }
+        const isDark = document.body.classList.contains('vscode-dark') ||
+                       document.body.classList.contains('vscode-high-contrast');
+        if (!mermaidInitialized) ensureMermaidInit(isDark);
+        try {
+          const id = `mermaid-ed-${++mermaidIdCounter}`;
+          const { svg } = await mermaidLib.render(id, text);
+          previewPane.innerHTML = svg;
+        } catch {
+          previewPane.innerHTML = '<div class="mermaid-error">Syntax error</div>';
+        }
+      }, 600);
+    };
+
+    const observer = new MutationObserver(() => renderPreview());
+    observer.observe(code, { characterData: true, childList: true, subtree: true });
+
+    renderPreview();
+
+    return {
+      dom: container,
+      contentDOM: code,
+      update(updatedNode) {
+        if (updatedNode.type.name !== 'code_block') return false;
+        if (updatedNode.attrs.language !== 'mermaid') return false;
+        return true;
+      },
+      destroy() {
+        clearTimeout(renderTimer);
+        observer.disconnect();
+      },
+    };
+  };
+}
+
+function createExcalidrawNodeView(): NodeViewConstructor {
+  return (node, view, getPos) => {
+    const container = document.createElement('div');
+    container.className = 'excalidraw-edit-container';
+    container.setAttribute('contenteditable', 'false');
+
+    const root = createRoot(container);
+    const initialCode = node.textContent || '{}';
+
+    root.render(
+      <ExcalidrawEditMode
+        initialCode={initialCode}
+        onChange={(newCode: string) => {
+          const pos = getPos();
+          if (pos === undefined) return;
+          const tr = view.state.tr;
+          const nodeSize = node.nodeSize;
+          const contentStart = pos + 1;
+          const contentEnd = pos + nodeSize - 1;
+          tr.replaceWith(contentStart, contentEnd, newCode ? view.state.schema.text(newCode) : []);
+          view.dispatch(tr);
+        }}
+      />
+    );
+
+    return {
+      dom: container,
+      update(updatedNode) {
+        if (updatedNode.type.name !== 'code_block') return false;
+        if (updatedNode.attrs.language !== 'excalidraw') return false;
+        return true;
+      },
+      stopEvent() { return true; },
+      ignoreMutation() { return true; },
+      destroy() { root.unmount(); },
+    };
+  };
+}
+
+function createDefaultCodeBlockView(): NodeViewConstructor {
+  return (node) => {
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    const lang = node.attrs.language;
+    if (lang) pre.setAttribute('data-language', lang);
+    pre.appendChild(code);
+    return { dom: pre, contentDOM: code };
+  };
+}
+
+const codeBlockNodeView = $view(codeBlockSchema.node, () => {
+  return (node, view, getPos, decorations, innerDecorations) => {
+    const lang = node.attrs.language;
+    if (lang === 'mermaid') return createMermaidNodeView()(node, view, getPos, decorations, innerDecorations);
+    if (lang === 'excalidraw') return createExcalidrawNodeView()(node, view, getPos, decorations, innerDecorations);
+    return createDefaultCodeBlockView()(node, view, getPos, decorations, innerDecorations);
+  };
+});
 
 interface MilkdownEditorInnerProps {
   initialContent: string;
@@ -44,7 +177,7 @@ function MilkdownEditorInner({ initialContent }: MilkdownEditorInnerProps) {
           if (markdown === prevMarkdown) return;
           if (markdown === lastSentContent.current) return;
           lastSentContent.current = markdown;
-          getVsCode().postMessage({ type: 'edit', content: markdown });
+          getVsCodeApi()?.postMessage({ type: 'edit', content: markdown });
         });
       })
       .use(commonmark)
@@ -54,8 +187,7 @@ function MilkdownEditorInner({ initialContent }: MilkdownEditorInnerProps) {
       .use(clipboard)
       .use(indent)
       .use(trailing)
-      .use(math)
-      .use(diagram),
+      .use(codeBlockNodeView),
     [initialContent]
   );
 

@@ -1,0 +1,543 @@
+@import "tailwindcss";
+
+/* 扫描 Streamdown 的 dist 文件，让 Tailwind 能检测到它使用的工具类 */
+@source "../../node_modules/streamdown/dist";
+
+/*
+ * VS Code theme token bridge
+ * Tailwind v4 @theme: 定义设计令牌，同时生成 CSS 变量和工具类。
+ *
+ * Streamdown 内部使用如 bg-sidebar、text-foreground、border-border 等类名，
+ * 必须在 @theme 中以 --color-<name> 形式定义才能生成对应的工具类。
+ */
+@theme {
+  /* ---- Streamdown 语义色彩令牌（必须精确匹配 Streamdown 内部使用的名称） ---- */
+  --color-foreground: var(--vscode-editor-foreground, #cccccc);
+  --color-muted-foreground: color-mix(in srgb, var(--vscode-foreground, #cccccc) 54%, transparent);
+  --color-background: var(--vscode-editor-background, #1e1e1e);
+  --color-muted: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --color-primary: var(--vscode-button-background, #0e639c);
+  --color-primary-foreground: var(--vscode-button-foreground, #ffffff);
+  --color-sidebar: var(--vscode-sideBar-background, #252526);
+  --color-border: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --color-card: var(--vscode-dropdown-background, #252526);
+
+  /* ---- VS Code 原生映射 ---- */
+  --color-vsc-bg: var(--vscode-editor-background, #1e1e1e);
+  --color-vsc-fg: var(--vscode-editor-foreground, #cccccc);
+  --color-vsc-link: var(--vscode-textLink-foreground, #3794ff);
+  --color-vsc-link-active: var(--vscode-textLink-activeForeground, #3794ff);
+  --color-vsc-btn-bg: var(--vscode-button-background, #0e639c);
+  --color-vsc-btn-fg: var(--vscode-button-foreground, #ffffff);
+  --color-vsc-selection: var(--vscode-editor-selectionBackground, rgba(38, 79, 120, 0.6));
+  --color-vsc-code-bg: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
+  --color-vsc-code-fg: var(--vscode-textPreformat-foreground, #d7ba7d);
+  --color-vsc-quote-bg: var(--vscode-textBlockQuote-background, rgba(128,128,128,0.1));
+  --color-vsc-quote-border: var(--vscode-textBlockQuote-border, rgba(128,128,128,0.5));
+  --color-vsc-scrollbar: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  --color-vsc-scrollbar-hover: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+  --color-vsc-scrollbar-active: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
+  --color-vsc-sidebar: var(--vscode-sideBar-background, #252526);
+  --color-vsc-cursor: var(--vscode-editorCursor-foreground, #aeafad);
+
+  /* ---- Cursor 设计令牌 ---- */
+  --color-cursor-text-primary: var(--vscode-foreground, #cccccc);
+  --color-cursor-text-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 74%, transparent);
+  --color-cursor-text-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 54%, transparent);
+  --color-cursor-text-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 36%, transparent);
+
+  --color-cursor-bg-primary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 20%, transparent);
+  --color-cursor-bg-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 14%, transparent);
+  --color-cursor-bg-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --color-cursor-bg-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 6%, transparent);
+  --color-cursor-bg-elevated: var(--vscode-dropdown-background, #252526);
+
+  --color-cursor-stroke-primary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 20%, transparent);
+  --color-cursor-stroke-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 12%, transparent);
+  --color-cursor-stroke-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --color-cursor-stroke-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 4%, transparent);
+}
+
+/* ========== Base reset ========== */
+@layer base {
+  html, body {
+    @apply m-0 p-0;
+    background-color: var(--color-vsc-bg);
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    @apply max-w-[900px] mx-auto px-8 pt-4 pb-16;
+  }
+
+  ::selection {
+    background-color: var(--color-vsc-selection);
+  }
+
+  ::-webkit-scrollbar { @apply w-2.5 h-2.5; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-vsc-scrollbar);
+    @apply rounded-md;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-vsc-scrollbar-hover); }
+  ::-webkit-scrollbar-thumb:active { background: var(--color-vsc-scrollbar-active); }
+}
+
+/* ==========================================================================
+   预览模式 — .markdown-section 内的元素样式
+   ========================================================================== */
+@layer base {
+  .markdown-container-root {
+    color: var(--color-vsc-fg);
+  }
+
+  .markdown-section {
+    @apply rounded-sm leading-[150%] my-1.5 relative;
+  }
+
+  /* ---------- Headings ---------- */
+  .markdown-section h1,
+  .markdown-section h2,
+  .markdown-section h3,
+  .markdown-section h4,
+  .markdown-section h5,
+  .markdown-section h6 {
+    @apply font-semibold leading-tight;
+    color: var(--color-vsc-fg);
+  }
+  .markdown-section h1 {
+    @apply text-[1.6em] mt-6 mb-3 pb-1;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .markdown-section h2 {
+    @apply text-[1.3em] mt-5 mb-2.5 pb-1;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .markdown-section h3 { @apply text-[1.15em] mt-[18px] mb-2; }
+  .markdown-section h4 { @apply text-[1.05em] mt-4 mb-2; }
+  .markdown-section h5 { @apply text-[0.95em] mt-3.5 mb-1.5; }
+  .markdown-section h6 { @apply text-[0.85em] mt-3 mb-1.5; }
+  .markdown-section h1:first-child { @apply mt-0; }
+
+  /* ---------- Paragraphs ---------- */
+  .markdown-section p { @apply mb-4 leading-relaxed; }
+  .markdown-section li > p { @apply mb-0; }
+
+  /* ---------- Links ---------- */
+  .markdown-section a,
+  .markdown-link {
+    color: var(--color-vsc-link);
+    @apply no-underline transition-colors duration-100;
+  }
+  .markdown-section a:hover,
+  .markdown-link:hover {
+    color: var(--color-vsc-link-active);
+    @apply underline;
+  }
+
+  /* ---------- Inline code ---------- */
+  .markdown-section code:not(pre code) {
+    background-color: color-mix(in srgb, var(--vscode-textCodeBlock-background, rgba(128,128,128,0.15)) 80%, var(--vscode-input-placeholderForeground, #888));
+    color: var(--color-vsc-code-fg);
+    @apply rounded-sm px-1 py-px text-[0.9em] transition-all duration-100;
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", "Liberation Mono", "DejaVu Sans Mono", "Courier New", monospace);
+  }
+
+  /* ---------- Code blocks（仅非 Streamdown 的 pre 元素） ---------- */
+  .markdown-section pre:not([data-streamdown="code-block"] pre):not([data-streamdown="code-block-body"] pre) {
+    background-color: var(--color-vsc-code-bg);
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+    @apply rounded-lg p-4 overflow-x-auto my-2 mb-4 relative;
+  }
+  .markdown-section pre:not([data-streamdown="code-block"] pre):not([data-streamdown="code-block-body"] pre) code {
+    @apply inline-block p-0 rounded-none text-[0.9em] leading-normal;
+    background: none !important;
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", monospace);
+    tab-size: 4;
+  }
+
+  /* Streamdown 代码块内的 pre：透明背景，不加额外边框 */
+  [data-streamdown="code-block"] pre,
+  [data-streamdown="code-block-body"] pre {
+    @apply p-0 m-0 overflow-x-auto;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  [data-streamdown="code-block"] pre code,
+  [data-streamdown="code-block-body"] pre code {
+    @apply block p-0 rounded-none text-[0.9em] leading-normal;
+    background: none !important;
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+    tab-size: 4;
+  }
+
+  /* ---------- Blockquote ---------- */
+  .markdown-section blockquote {
+    background: var(--color-vsc-quote-bg);
+    border-left: 4px solid var(--color-vsc-quote-border);
+    @apply rounded-r-sm my-2 mb-4 py-2 px-3 pl-3;
+    color: var(--color-cursor-text-secondary);
+  }
+  .markdown-section blockquote p { @apply mb-2; }
+  .markdown-section blockquote p:last-child { @apply mb-0; }
+
+  /* ---------- Lists ---------- */
+  .markdown-section ul,
+  .markdown-section ol { @apply my-1 pl-6; }
+  .markdown-section li { @apply my-0.5 leading-relaxed; }
+
+  /* Task lists */
+  .markdown-section li:has(input[type="checkbox"]) {
+    list-style-type: none;
+    @apply -ml-5;
+  }
+  .markdown-section input[type="checkbox"] {
+    @apply mr-1.5 align-middle;
+    accent-color: var(--color-vsc-link);
+  }
+
+  /* ---------- Tables ---------- */
+  .markdown-table-container {
+    @apply my-2 mb-4 overflow-hidden rounded-lg;
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .markdown-table-wrapper { @apply overflow-x-auto; }
+  .markdown-table { @apply border-collapse w-full; }
+  .markdown-table th,
+  .markdown-table td {
+    @apply py-1 px-2 text-left whitespace-nowrap;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+    border-right: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .markdown-table th:last-child,
+  .markdown-table td:last-child { border-right: none; }
+  .markdown-table tbody tr:last-child td { border-bottom: none; }
+  .markdown-table th {
+    @apply font-semibold;
+    background-color: var(--color-cursor-bg-quaternary);
+    color: var(--color-vsc-fg);
+  }
+  .markdown-table tr:hover td {
+    background-color: var(--color-cursor-bg-quaternary);
+  }
+
+  /* ---------- Horizontal rule ---------- */
+  .markdown-section hr {
+    background-color: var(--color-cursor-stroke-secondary) !important;
+    @apply border-none h-px my-4;
+  }
+
+  /* ---------- Images & video ---------- */
+  .markdown-section img { @apply max-w-full h-auto rounded-lg my-2; }
+  .markdown-section video { @apply max-w-full h-auto rounded-lg; }
+
+  /* ---------- Strong, emphasis, del ---------- */
+  .markdown-section strong { @apply font-semibold; color: var(--color-vsc-fg); }
+  .markdown-section em { @apply italic; }
+  .markdown-section del { @apply line-through opacity-70; }
+
+  /* ---------- Definition list ---------- */
+  .markdown-section dt { @apply font-semibold mt-3; }
+  .markdown-section dd { @apply ml-6 mb-2; }
+
+  /* ---------- Details / summary ---------- */
+  .markdown-section details {
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+    @apply rounded-lg py-2 px-3 my-2 mb-4;
+  }
+  .markdown-section summary { @apply cursor-pointer font-semibold select-none; }
+  .markdown-section details[open] summary { @apply mb-2; }
+
+  /* ---------- KaTeX math ---------- */
+  .markdown-section .katex-display { @apply my-4 overflow-x-auto py-2; }
+  .markdown-section .katex { @apply text-[1.1em]; }
+}
+
+/* ==========================================================================
+   Streamdown 覆盖
+   Streamdown 内部使用 Tailwind 工具类（通过 twMerge），这里只做微调。
+   ========================================================================== */
+@layer base {
+  [data-streamdown] { @apply leading-relaxed; }
+  [data-streamdown="heading"] { @apply font-semibold; }
+
+  [data-streamdown="code-block"] {
+    @apply rounded-lg overflow-hidden;
+  }
+  [data-streamdown="code-block"] [data-streamdown="code-block-body"] {
+    @apply rounded-lg;
+  }
+
+  [data-streamdown="link"] {
+    color: var(--color-vsc-link);
+    @apply no-underline;
+  }
+  [data-streamdown="link"]:hover { @apply underline; }
+
+  /* Shiki code highlighting */
+  .shiki,
+  .shiki code {
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace) !important;
+    font-size: var(--vscode-editor-font-size, 13px) !important;
+  }
+  .shiki { background-color: transparent !important; }
+
+  /* Shiki dual theme switching */
+  html.vscode-light .shiki .shiki-dark,
+  html:not(.vscode-dark):not(.vscode-high-contrast) .shiki .shiki-dark { @apply hidden; }
+  html.vscode-dark .shiki .shiki-light,
+  html.vscode-high-contrast .shiki .shiki-light { @apply hidden; }
+
+  /* SVG in streamdown */
+  [data-streamdown] svg { @apply align-middle; }
+}
+
+/* ==========================================================================
+   Mermaid / Diagram — 深色主题覆盖
+   ========================================================================== */
+@layer base {
+  /* Mermaid SVG 内文本颜色强制跟随 VS Code 前景色 */
+  [data-streamdown="mermaid"] .label,
+  [data-streamdown="mermaid"] .nodeLabel,
+  [data-streamdown="mermaid"] .edgeLabel,
+  [data-streamdown="mermaid"] .cluster-label,
+  .mermaid .label,
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .cluster-label {
+    color: var(--color-vsc-fg) !important;
+    fill: var(--color-vsc-fg) !important;
+  }
+
+  /* 老式 .markdown-section 内的 mermaid（非 Streamdown） */
+  .markdown-section [data-mermaid],
+  .markdown-section .mermaid {
+    background-color: var(--color-vsc-bg);
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+    @apply rounded-lg text-xs p-4 my-2 mb-4 w-full overflow-hidden flex flex-col items-center;
+  }
+  .markdown-section [data-mermaid] svg,
+  .markdown-section .mermaid svg {
+    @apply max-w-full h-auto;
+  }
+}
+
+/* ========== Empty state ========== */
+.markdown-empty {
+  @apply flex items-center justify-center min-h-[200px];
+  color: var(--color-cursor-text-tertiary);
+}
+
+/* ==========================================================================
+   Milkdown / WYSIWYG 编辑器
+   ========================================================================== */
+@layer base {
+  .ProseMirror {
+    @apply outline-none py-4 leading-relaxed;
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+  }
+  .ProseMirror:focus { @apply outline-none; }
+
+  .ProseMirror h1,
+  .ProseMirror h2,
+  .ProseMirror h3,
+  .ProseMirror h4,
+  .ProseMirror h5,
+  .ProseMirror h6 {
+    @apply font-semibold leading-tight;
+    color: var(--color-vsc-fg);
+  }
+  .ProseMirror h1 {
+    @apply text-[1.6em] mt-6 mb-3 pb-1;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .ProseMirror h2 {
+    @apply text-[1.3em] mt-5 mb-2.5 pb-1;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .ProseMirror h3 { @apply text-[1.15em] mt-[18px] mb-2; }
+  .ProseMirror h4 { @apply text-[1.05em] mt-4 mb-2; }
+  .ProseMirror h5 { @apply text-[0.95em] mt-3.5 mb-1.5; }
+  .ProseMirror h6 { @apply text-[0.85em] mt-3 mb-1.5; }
+  .ProseMirror h1:first-child { @apply mt-0; }
+
+  .ProseMirror p { @apply mb-4 leading-relaxed; }
+  .ProseMirror li > p { @apply mb-0; }
+
+  .ProseMirror a {
+    color: var(--color-vsc-link);
+    @apply no-underline cursor-pointer;
+  }
+  .ProseMirror a:hover { @apply underline; }
+
+  .ProseMirror code:not(pre code) {
+    background-color: color-mix(in srgb, var(--vscode-textCodeBlock-background, rgba(128,128,128,0.15)) 80%, var(--vscode-input-placeholderForeground, #888));
+    color: var(--color-vsc-code-fg);
+    @apply rounded-sm px-1 py-px text-[0.9em];
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+  }
+
+  .ProseMirror pre {
+    background-color: var(--color-vsc-code-bg);
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+    @apply rounded-lg p-4 overflow-x-auto my-2 mb-4 relative;
+  }
+  .ProseMirror pre code {
+    @apply block p-0 rounded-none text-[0.9em] leading-normal;
+    background: none !important;
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+    tab-size: 4;
+  }
+
+  .ProseMirror blockquote {
+    background: var(--color-vsc-quote-bg);
+    border-left: 4px solid var(--color-vsc-quote-border);
+    @apply rounded-r-sm my-2 mb-4 py-2 px-4 pl-3;
+    color: var(--color-cursor-text-secondary);
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol { @apply my-1 pl-6; }
+  .ProseMirror li { @apply my-0.5 leading-relaxed; }
+
+  .ProseMirror li[data-checked] {
+    list-style-type: none;
+    @apply relative;
+  }
+  .ProseMirror li[data-checked]::before { @apply absolute -left-5; }
+  .ProseMirror input[type="checkbox"] {
+    @apply mr-1.5;
+    accent-color: var(--color-vsc-link);
+  }
+
+  .ProseMirror table {
+    @apply border-collapse w-full my-2 mb-4 overflow-hidden rounded-lg;
+    border: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .ProseMirror th,
+  .ProseMirror td {
+    @apply py-1 px-2 text-left;
+    border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+    border-right: 1px solid var(--color-cursor-stroke-tertiary);
+  }
+  .ProseMirror th:last-child,
+  .ProseMirror td:last-child { border-right: none; }
+  .ProseMirror tbody tr:last-child td { border-bottom: none; }
+  .ProseMirror th {
+    @apply font-semibold;
+    background-color: var(--color-cursor-bg-quaternary);
+  }
+  .ProseMirror .selectedCell {
+    background-color: var(--color-vsc-selection);
+  }
+
+  .ProseMirror hr {
+    background-color: var(--color-cursor-stroke-secondary) !important;
+    @apply border-none h-px my-4;
+  }
+  .ProseMirror img { @apply max-w-full h-auto rounded-lg my-2; }
+  .ProseMirror strong { @apply font-semibold; color: var(--color-vsc-fg); }
+  .ProseMirror em { @apply italic; }
+  .ProseMirror del { @apply line-through opacity-70; }
+
+  .ProseMirror ::selection { background-color: var(--color-vsc-selection); }
+  .ProseMirror .is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--color-cursor-text-quaternary);
+    @apply pointer-events-none absolute;
+  }
+
+  .milkdown {
+    --color-surface: var(--color-vsc-bg) !important;
+    --color-primary: var(--color-vsc-link) !important;
+    --color-secondary: var(--color-cursor-text-secondary) !important;
+    --color-solid: var(--color-vsc-fg) !important;
+    --color-line: var(--color-cursor-stroke-tertiary) !important;
+    --color-background: var(--color-vsc-bg) !important;
+    @apply bg-transparent shadow-none border-none;
+    color: var(--color-vsc-fg) !important;
+  }
+  .milkdown .editor { @apply p-0; }
+}
+
+/* ==========================================================================
+   Mermaid 分屏视图（编辑模式：左代码 / 右预览）
+   ========================================================================== */
+.mermaid-split-container {
+  @apply flex gap-0 my-2 mb-4 rounded-lg overflow-hidden;
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+  min-height: 160px;
+}
+.mermaid-split-container .mermaid-code-pane {
+  @apply flex-1 min-w-0 overflow-auto;
+  background-color: var(--color-vsc-code-bg);
+  border-right: 1px solid var(--color-cursor-stroke-tertiary);
+}
+.mermaid-split-container .mermaid-code-pane pre {
+  @apply p-3 m-0 min-h-full;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+.mermaid-split-container .mermaid-code-pane pre code {
+  @apply block text-[0.85em] leading-normal;
+  background: none !important;
+  color: var(--color-vsc-fg);
+  font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.mermaid-split-container .mermaid-preview-pane {
+  @apply flex-1 min-w-0 flex items-center justify-center p-4 overflow-auto;
+  background-color: var(--color-vsc-bg);
+}
+.mermaid-split-container .mermaid-preview-pane svg {
+  @apply max-w-full h-auto;
+}
+.mermaid-split-container .mermaid-preview-pane .mermaid-error {
+  color: var(--color-cursor-text-tertiary);
+  @apply text-xs italic;
+}
+.mermaid-split-container .mermaid-label {
+  @apply text-[10px] px-2 py-0.5 select-none;
+  color: var(--color-cursor-text-quaternary);
+  background: var(--color-cursor-bg-quaternary);
+}
+
+/* ==========================================================================
+   Excalidraw 编辑视图（编辑模式）
+   ========================================================================== */
+.excalidraw-edit-container {
+  @apply my-2 mb-4 rounded-lg overflow-hidden;
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+}
+.excalidraw-edit-container .excalidraw-header {
+  @apply flex items-center justify-between px-3 py-1.5 text-xs;
+  background: var(--color-cursor-bg-quaternary);
+  color: var(--color-cursor-text-tertiary);
+  border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
+}
+.excalidraw-edit-container .excalidraw-canvas-wrap {
+  height: 450px;
+  background: var(--color-vsc-bg);
+}
+
+/* ========== Reduced motion ========== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

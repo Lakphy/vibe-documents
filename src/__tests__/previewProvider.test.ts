@@ -126,12 +126,15 @@ describe('MarkdownPreviewProvider', () => {
   });
 
   describe('内容推送', () => {
-    it('创建面板后立即发送内容', async () => {
+    it('收到 ready 消息后发送内容', async () => {
       const uri = vscode.Uri.file('/test/file.md');
       provider.showPreview(uri, vscode.ViewColumn.Active);
 
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
       await vi.waitFor(() => {
-        const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
         expect(panel.webview.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'update',

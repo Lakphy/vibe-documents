@@ -116,6 +116,12 @@ export const commands = {
   }),
 };
 
+export const languages = {
+  registerCodeLensProvider: vi.fn((_selector: any, _provider: any) => {
+    return { dispose: vi.fn() };
+  }),
+};
+
 export class ThemeIcon {
   constructor(public readonly id: string) {}
 }

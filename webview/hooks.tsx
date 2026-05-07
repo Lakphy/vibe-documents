@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { resolveImageSrc } from '../src/utils';
+import { getVsCodeApi } from './vscodeApi';
 
 export interface VsCodeMessage {
   type: string;
@@ -22,10 +23,33 @@ export function useVsCodeMessages() {
       }
     };
     window.addEventListener('message', handler);
+
+    getVsCodeApi()?.postMessage({ type: 'ready' });
+
     return () => window.removeEventListener('message', handler);
   }, []);
 
   return { content, baseUri };
+}
+
+export function useVsCodeTheme() {
+  const [isDark, setIsDark] = useState(() => {
+    return document.body.classList.contains('vscode-dark') ||
+           document.body.classList.contains('vscode-high-contrast');
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(
+        document.body.classList.contains('vscode-dark') ||
+        document.body.classList.contains('vscode-high-contrast')
+      );
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
 }
 
 export function useMarkdownComponents(baseUri: string) {

@@ -39,11 +39,16 @@ const webviewConfig = {
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js', '.jsx', '.mjs'],
-    conditionNames: ['import', 'module', 'browser', 'default'],
+    conditionNames: ['production', 'import', 'module', 'browser', 'default'],
     mainFields: ['module', 'browser', 'main'],
+    fullySpecified: false,
   },
   module: {
     rules: [
+      {
+        test: /\.m?js$/,
+        resolve: { fullySpecified: false },
+      },
       {
         test: /\.tsx?$/,
         exclude: /node_modules/,
@@ -51,13 +56,24 @@ const webviewConfig = {
       },
       {
         test: /\.css$/,
-        use: [MiniCssExtractPlugin.loader, 'css-loader'],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
+      },
+      {
+        test: /\.scss$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
       },
       {
         test: /\.(woff|woff2|ttf|eot)$/,
         type: 'asset/resource',
         generator: {
           filename: 'fonts/[name][ext]',
+        },
+      },
+      {
+        test: /\.(png|jpg|gif|svg|wasm)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'assets/[name][ext]',
         },
       },
     ],

@@ -2,9 +2,13 @@
   "name": "vibe-documents",
   "displayName": "Vibe Documents - Cursor-style Markdown Preview",
   "description": "A beautiful Markdown preview extension inspired by Cursor's rendering style, with Mermaid, KaTeX, Shiki code highlighting and more.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "lakphy",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lakphy/vibe-documents"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -37,7 +41,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "vibeDocuments.showPreviewToSide",
+          "command": "vibeDocuments.showPreview",
           "when": "editorLangId == markdown",
           "group": "navigation"
         }
@@ -52,7 +56,7 @@
     },
     "keybindings": [
       {
-        "command": "vibeDocuments.showPreviewToSide",
+        "command": "vibeDocuments.showPreview",
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
         "when": "editorLangId == markdown"
@@ -75,6 +79,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -85,7 +90,12 @@
     "css-loader": "^7.1.0",
     "jsdom": "^29.1.1",
     "mini-css-extract-plugin": "^2.9.0",
+    "postcss": "^8.5.14",
+    "postcss-loader": "^8.2.1",
+    "sass": "^1.99.0",
+    "sass-loader": "^16.0.7",
     "style-loader": "^4.0.0",
+    "tailwindcss": "^4.2.4",
     "ts-loader": "^9.5.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.5",
@@ -98,6 +108,7 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.42.1",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@milkdown/components": "^7.20.0",
     "@milkdown/kit": "^7.20.0",
     "@milkdown/plugin-diagram": "^7.7.0",
@@ -109,6 +120,7 @@
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
     "codemirror": "^6.0.2",
+    "lucide-react": "^1.14.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "streamdown": "^2.5.0"

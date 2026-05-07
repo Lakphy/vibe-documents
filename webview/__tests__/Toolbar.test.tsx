@@ -13,9 +13,9 @@ describe('Toolbar', () => {
   it('当前模式按钮有 active 样式', () => {
     render(<Toolbar mode="wysiwyg" onModeChange={() => {}} />);
     const editBtn = screen.getByTitle('编辑');
-    expect(editBtn.className).toContain('vd-toolbar-btn--active');
+    expect(editBtn.style.boxShadow).toBeTruthy();
     const previewBtn = screen.getByTitle('预览');
-    expect(previewBtn.className).not.toContain('vd-toolbar-btn--active');
+    expect(previewBtn.style.background).toBe('transparent');
   });
 
   it('点击按钮触发 onModeChange', () => {
@@ -36,7 +36,7 @@ describe('Toolbar', () => {
     modes.forEach((mode, i) => {
       const { unmount } = render(<Toolbar mode={mode} onModeChange={() => {}} />);
       const btn = screen.getByTitle(titles[i]);
-      expect(btn.className).toContain('vd-toolbar-btn--active');
+      expect(btn.style.boxShadow).toBeTruthy();
       unmount();
     });
   });

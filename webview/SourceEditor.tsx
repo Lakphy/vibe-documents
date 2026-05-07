@@ -3,20 +3,7 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
-
-declare function acquireVsCodeApi(): {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-};
-
-let _vscode: ReturnType<typeof acquireVsCodeApi> | undefined;
-function getVsCode() {
-  if (!_vscode) {
-    _vscode = acquireVsCodeApi();
-  }
-  return _vscode;
-}
+import { getVsCodeApi } from './vscodeApi';
 
 interface SourceEditorProps {
   content: string;
@@ -72,7 +59,7 @@ export function SourceEditor({ content }: SourceEditorProps) {
       const newContent = update.state.doc.toString();
       if (newContent === lastSentContent.current) return;
       lastSentContent.current = newContent;
-      getVsCode().postMessage({ type: 'edit', content: newContent });
+      getVsCodeApi()?.postMessage({ type: 'edit', content: newContent });
     });
 
     const state = EditorState.create({

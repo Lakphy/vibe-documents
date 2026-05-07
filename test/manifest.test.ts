@@ -156,17 +156,16 @@ describe('项目文件完整性', () => {
     'src/extension.ts',
     'src/previewProvider.ts',
     'src/utils.ts',
+    'src/codeLensProvider.ts',
     'webview/App.tsx',
     'webview/index.tsx',
     'webview/hooks.tsx',
     'webview/Toolbar.tsx',
     'webview/MilkdownEditor.tsx',
     'webview/SourceEditor.tsx',
-    'webview/styles/theme-bridge.css',
-    'webview/styles/cursor-markdown.css',
-    'webview/styles/streamdown-controls.css',
-    'webview/styles/toolbar.css',
-    'webview/styles/milkdown-overrides.css',
+    'webview/ExcalidrawBlock.tsx',
+    'webview/styles/main.css',
+    'postcss.config.js',
   ];
 
   requiredFiles.forEach(file => {

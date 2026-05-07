@@ -93,7 +93,9 @@ export class MarkdownPreviewProvider {
     };
 
     panel.webview.onDidReceiveMessage(async (msg) => {
-      if (msg.type === 'edit' && typeof msg.content === 'string') {
+      if (msg.type === 'ready') {
+        sendContent();
+      } else if (msg.type === 'edit' && typeof msg.content === 'string') {
         const doc = await vscode.workspace.openTextDocument(uri);
         const currentText = doc.getText();
         if (currentText === msg.content) return;
@@ -114,8 +116,6 @@ export class MarkdownPreviewProvider {
         }
       }
     });
-
-    sendContent();
 
     const fileWatcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(vscode.Uri.file(path.dirname(uri.fsPath)), path.basename(uri.fsPath))
