@@ -1,0 +1,271 @@
+/*
+ * Streamdown controls CSS
+ * Provides essential styling for streamdown's UI controls that normally depend on Tailwind.
+ * Covers code block actions, mermaid diagrams, table controls, and modals.
+ */
+
+/* ========== Tailwind-like utility resets for streamdown ========== */
+
+/* Flexbox */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.inline-block { display: inline-block; }
+.hidden { display: none; }
+.block { display: block; }
+
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
+.shrink-0 { flex-shrink: 0; }
+
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+
+/* Positioning */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.sticky { position: sticky; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.top-2 { top: 0.5rem; }
+.top-4 { top: 1rem; }
+.right-4 { right: 1rem; }
+.z-10 { z-index: 10; }
+.z-50 { z-index: 50; }
+
+/* Sizing */
+.w-full { width: 100%; }
+.max-w-md { max-width: 28rem; }
+.size-full { width: 100%; height: 100%; }
+.h-8 { height: 2rem; }
+
+/* Spacing */
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
+.px-1\.5 { padding-left: 0.375rem; padding-right: 0.375rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.mx-4 { margin-left: 1rem; margin-right: 1rem; }
+.my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+.-mt-10 { margin-top: -2.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+
+/* Typography */
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.italic { font-style: italic; }
+.whitespace-pre-wrap { white-space: pre-wrap; }
+.whitespace-nowrap { white-space: nowrap; }
+.break-all { word-break: break-all; }
+.overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
+.overflow-y-auto { overflow-y: auto; }
+
+/* Borders */
+.border { border: 1px solid var(--cursor-stroke-tertiary); }
+.rounded-md { border-radius: 0.375rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
+
+/* Effects */
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); }
+.backdrop-blur-sm { backdrop-filter: blur(4px); }
+.transition-all { transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+.transition-colors { transition-property: color, background-color, border-color; transition-duration: 150ms; }
+.transition-opacity { transition: opacity 150ms; }
+
+/* Pointer events */
+.pointer-events-none { pointer-events: none; }
+.pointer-events-auto { pointer-events: auto; }
+
+/* Group hover */
+.group:hover .group-hover\:block { display: block; }
+.group:hover .group-hover\:opacity-100 { opacity: 1; }
+
+/* ========== Streamdown semantic color tokens ========== */
+
+:root {
+  --color-foreground: var(--vscode-editor-foreground, #cccccc);
+  --color-muted-foreground: var(--cursor-text-tertiary);
+  --color-background: var(--vscode-editor-background, #1e1e1e);
+  --color-muted: var(--cursor-bg-tertiary);
+  --color-primary: var(--vscode-button-background, #0e639c);
+  --color-primary-foreground: var(--vscode-button-foreground, #ffffff);
+  --color-sidebar: var(--vscode-sideBar-background, #252526);
+  --color-border: var(--cursor-stroke-tertiary);
+  --color-card: var(--cursor-bg-elevated);
+}
+
+.text-foreground { color: var(--color-foreground); }
+.text-muted-foreground { color: var(--color-muted-foreground); }
+.text-primary-foreground { color: var(--color-primary-foreground); }
+
+.bg-background { background-color: var(--color-background); }
+.bg-background\/50 { background-color: color-mix(in srgb, var(--color-background) 50%, transparent); }
+.bg-background\/95 { background-color: color-mix(in srgb, var(--color-background) 95%, transparent); }
+.bg-muted { background-color: var(--color-muted); }
+.bg-primary { background-color: var(--color-primary); }
+.bg-primary\/90 { background-color: color-mix(in srgb, var(--color-primary) 90%, transparent); }
+.bg-sidebar\/80 { background-color: color-mix(in srgb, var(--color-sidebar) 80%, transparent); }
+.bg-sidebar\/70 { background-color: color-mix(in srgb, var(--color-sidebar) 70%, transparent); }
+.bg-black\/10 { background-color: rgba(0,0,0,0.1); }
+
+.border-sidebar { border-color: var(--color-sidebar); }
+
+/* Hover states */
+.hover\:bg-muted:hover { background-color: var(--color-muted); }
+.hover\:bg-primary\/90:hover { background-color: color-mix(in srgb, var(--color-primary) 90%, transparent); }
+.hover\:text-foreground:hover { color: var(--color-foreground); }
+
+/* ========== Streamdown code block specifics ========== */
+
+[data-streamdown="code-block-actions"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+[data-streamdown="code-block-actions"] button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-sidebar) 80%, transparent);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+pre:hover [data-streamdown="code-block-actions"] button,
+[data-streamdown="code-block-actions"]:hover button {
+  opacity: 1;
+}
+
+[data-streamdown="code-block-actions"] button:hover {
+  background: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+/* ========== Streamdown table wrapper ========== */
+
+[data-streamdown="table-wrapper"] {
+  margin: 8px 0 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--cursor-stroke-tertiary);
+}
+
+[data-streamdown="table-wrapper"] table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+[data-streamdown="table-wrapper"] th,
+[data-streamdown="table-wrapper"] td {
+  padding: 5px 9px;
+  text-align: left;
+  border-bottom: 1px solid var(--cursor-stroke-tertiary);
+  border-right: 1px solid var(--cursor-stroke-tertiary);
+}
+
+[data-streamdown="table-wrapper"] th:last-child,
+[data-streamdown="table-wrapper"] td:last-child {
+  border-right: none;
+}
+
+[data-streamdown="table-wrapper"] tbody tr:last-child td {
+  border-bottom: none;
+}
+
+[data-streamdown="table-wrapper"] th {
+  background-color: var(--cursor-bg-quaternary);
+  font-weight: 600;
+}
+
+/* ========== Streamdown mermaid diagram ========== */
+
+[data-streamdown="diagram"],
+.mermaid {
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  border: 1px solid var(--vscode-commandCenter-inactiveBorder, var(--cursor-stroke-tertiary));
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 12px;
+  padding: 16px;
+  margin: 8px 0 16px;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+[data-streamdown="diagram"] svg,
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ========== Shiki code highlighting ========== */
+
+.shiki,
+.shiki code {
+  font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace) !important;
+  font-size: var(--vscode-editor-font-size, 13px) !important;
+}
+
+.shiki {
+  background-color: transparent !important;
+}
+
+/* Dual theme support */
+html.vscode-light .shiki .shiki-dark,
+html:not(.vscode-dark):not(.vscode-high-contrast) .shiki .shiki-dark {
+  display: none;
+}
+
+html.vscode-dark .shiki .shiki-light,
+html.vscode-high-contrast .shiki .shiki-light {
+  display: none;
+}
+
+/* ========== Supports queries ========== */
+
+@supports (backdrop-filter: blur(4px)) {
+  .supports-\[backdrop-filter\]\:bg-sidebar\/70 {
+    background-color: color-mix(in srgb, var(--color-sidebar) 70%, transparent);
+  }
+  .supports-\[backdrop-filter\]\:backdrop-blur {
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* ========== SVG in streamdown ========== */
+
+[data-streamdown] svg {
+  vertical-align: middle;
+}
+
+.\[data-streamdown\] svg:h-auto,
+.\[\&_svg\]\:h-auto svg { height: auto; }
+.\[\&_svg\]\:w-auto svg { width: auto; }

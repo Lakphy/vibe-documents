@@ -1,0 +1,116 @@
+{
+  "name": "vibe-documents",
+  "displayName": "Vibe Documents - Cursor-style Markdown Preview",
+  "description": "A beautiful Markdown preview extension inspired by Cursor's rendering style, with Mermaid, KaTeX, Shiki code highlighting and more.",
+  "version": "0.0.1",
+  "publisher": "lakphy",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vibeDocuments.showPreview",
+        "title": "Vibe: Open Markdown Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "vibeDocuments.showPreviewToSide",
+        "title": "Vibe: Open Markdown Preview to the Side",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "vibeDocuments.toggleMode",
+        "title": "Vibe: Toggle Preview/Edit Mode",
+        "icon": "$(edit)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vibeDocuments.showPreviewToSide",
+          "when": "editorLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "vibeDocuments.showPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vibeDocuments.showPreviewToSide",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "vibeDocuments.toggleMode",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "vibeDocumentsPreviewFocused"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "package": "vsce package",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.85.0",
+    "css-loader": "^7.1.0",
+    "jsdom": "^29.1.1",
+    "mini-css-extract-plugin": "^2.9.0",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.5",
+    "webpack": "^5.97.0",
+    "webpack-cli": "^6.0.0"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.42.1",
+    "@milkdown/components": "^7.20.0",
+    "@milkdown/kit": "^7.20.0",
+    "@milkdown/plugin-diagram": "^7.7.0",
+    "@milkdown/plugin-math": "^7.5.9",
+    "@milkdown/react": "^7.20.0",
+    "@milkdown/theme-nord": "^7.20.0",
+    "@streamdown/cjk": "^1.0.3",
+    "@streamdown/code": "^1.1.1",
+    "@streamdown/math": "^1.0.2",
+    "@streamdown/mermaid": "^1.0.2",
+    "codemirror": "^6.0.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "streamdown": "^2.5.0"
+  }
+}

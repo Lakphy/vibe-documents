@@ -1,0 +1,38 @@
+/*
+ * Cursor design token bridge
+ * Maps --cursor-* variables to --vscode-* CSS variables injected by VS Code webview.
+ */
+
+:root {
+  /* Color palette base */
+  --cursor-red: var(--vscode-charts-red, #f14c4c);
+  --cursor-orange: var(--vscode-charts-orange, #d18616);
+  --cursor-yellow: var(--vscode-charts-yellow, #cca700);
+  --cursor-green: var(--vscode-charts-green, #89d185);
+  --cursor-cyan: var(--vscode-terminal-ansiCyan, #29b8db);
+  --cursor-blue: var(--vscode-terminal-ansiBlue, #3794ff);
+  --cursor-magenta: var(--vscode-terminal-ansiMagenta, #bc89bd);
+  --cursor-purple: var(--vscode-charts-purple, #b180d7);
+
+  /* Text */
+  --cursor-text-primary: var(--vscode-foreground, #cccccc);
+  --cursor-text-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 74%, transparent);
+  --cursor-text-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 54%, transparent);
+  --cursor-text-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 36%, transparent);
+
+  /* Backgrounds */
+  --cursor-bg-primary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 20%, transparent);
+  --cursor-bg-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 14%, transparent);
+  --cursor-bg-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --cursor-bg-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 6%, transparent);
+  --cursor-bg-elevated: var(--vscode-dropdown-background, var(--vscode-quickInput-background, #252526));
+
+  /* Strokes */
+  --cursor-stroke-primary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 20%, transparent);
+  --cursor-stroke-secondary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 12%, transparent);
+  --cursor-stroke-tertiary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 8%, transparent);
+  --cursor-stroke-quaternary: color-mix(in srgb, var(--vscode-foreground, #cccccc) 4%, transparent);
+
+  /* Markdown-specific */
+  --markdown-foreground: var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc));
+}
