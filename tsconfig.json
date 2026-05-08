@@ -15,5 +15,5 @@
     "moduleResolution": "node",
     "sourceMap": true
   },
-  "exclude": ["node_modules", "dist", "vitest.config.ts", "**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "test/setup.ts", "test/__mocks__/**", "test/manifest.test.ts"]
+  "exclude": ["node_modules", "dist", "vitest.config.ts", "vite.config.webview.ts", "**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "test/setup.ts", "test/__mocks__/**", "test/manifest.test.ts"]
 }

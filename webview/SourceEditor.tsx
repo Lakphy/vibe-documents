@@ -1,9 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { getVsCodeApi } from './vscodeApi';
+import { subscribe } from './messageBus';
 
 interface SourceEditorProps {
   content: string;
@@ -91,29 +92,24 @@ export function SourceEditor({ content }: SourceEditorProps) {
   }, []);
 
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const msg = event.data;
-      if (msg.type === 'update' && msg.content !== undefined) {
-        const view = viewRef.current;
-        if (!view) return;
-        const currentContent = view.state.doc.toString();
-        if (currentContent === msg.content) return;
+    return subscribe('update', (msg) => {
+      if (msg.content === undefined) return;
+      const view = viewRef.current;
+      if (!view) return;
+      const currentContent = view.state.doc.toString();
+      if (currentContent === msg.content) return;
 
-        isExternalUpdate.current = true;
-        lastSentContent.current = msg.content;
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: msg.content,
-          },
-        });
-        isExternalUpdate.current = false;
-      }
-    };
-
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+      isExternalUpdate.current = true;
+      lastSentContent.current = msg.content;
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: msg.content,
+        },
+      });
+      isExternalUpdate.current = false;
+    });
   }, []);
 
   return (

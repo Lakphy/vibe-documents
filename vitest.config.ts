@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['src/**/*.test.ts', 'webview/**/*.test.tsx', 'test/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'webview/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
     css: false,
     alias: {

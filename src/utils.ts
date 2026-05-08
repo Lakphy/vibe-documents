@@ -27,7 +27,7 @@ export function buildPreviewHtml(params: HtmlTemplateParams): string {
     default-src 'none';
     img-src ${cspSource} https: data: blob:;
     media-src ${cspSource} https: blob:;
-    script-src 'nonce-${nonce}' 'unsafe-eval';
+    script-src ${cspSource} 'nonce-${nonce}' 'unsafe-eval';
     style-src ${cspSource} 'unsafe-inline';
     font-src ${cspSource} https: data:;
   ">
@@ -36,7 +36,7 @@ export function buildPreviewHtml(params: HtmlTemplateParams): string {
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
 }

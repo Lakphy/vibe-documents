@@ -12,6 +12,8 @@
 | **所见即所得模式** | 基于 Milkdown（ProseMirror）的富文本编辑，支持数学公式与 Mermaid 图表 |
 | **源码模式** | 基于 CodeMirror 6 的纯文本编辑，行号、语法高亮一应俱全 |
 | **双向同步** | Webview 编辑实时写回文件，文件变更实时推送到 Webview |
+| **Excalidraw 编辑器** | 直接打开 `.excalidraw` 文件进行手绘风格图形编辑 |
+| **CSV 编辑器** | 高性能虚拟滚动表格，支持编辑、排序、搜索替换、撤销重做 |
 | **Mermaid 图表** | 流程图、时序图、甘特图等 |
 | **KaTeX 数学公式** | 行内 `$...$` 和行间 `$$...$$` |
 | **Shiki 代码高亮** | 双主题支持（github-light / github-dark），自动跟随 VS Code 主题 |
@@ -61,25 +63,39 @@ vibe-documents/
 ├── src/                        # 扩展宿主代码 (Node.js)
 │   ├── extension.ts            # 扩展入口，命令注册
 │   ├── previewProvider.ts      # Webview 面板管理与双向通信
+│   ├── codeLensProvider.ts     # CodeLens（文件顶部预览按钮）
 │   ├── utils.ts                # 工具函数（nonce 生成、HTML 模板、图片路径）
 │   └── __tests__/              # 扩展层单元测试
 ├── webview/                    # Webview 前端代码 (React)
 │   ├── index.tsx               # React 入口，CSS 导入
-│   ├── App.tsx                 # 根组件，模式切换与插件配置
+│   ├── App.tsx                 # 根组件，按 fileType 路由
 │   ├── Toolbar.tsx             # 模式切换工具栏
 │   ├── MilkdownEditor.tsx      # WYSIWYG 编辑器 (Milkdown)
 │   ├── SourceEditor.tsx        # 源码编辑器 (CodeMirror)
+│   ├── ExcalidrawEditor.tsx    # Excalidraw 全屏编辑器
+│   ├── ExcalidrawBlock.tsx     # Excalidraw 内嵌块渲染
+│   ├── CsvViewer.tsx           # CSV 高性能编辑器入口
+│   ├── csv/                    # CSV 编辑器模块
+│   │   ├── types.ts            # 类型定义
+│   │   ├── parser.ts           # CSV 解析/序列化
+│   │   ├── history.ts          # 撤销/重做栈
+│   │   ├── store.ts            # 状态管理 (useReducer)
+│   │   ├── VirtualGrid.tsx     # 虚拟滚动网格
+│   │   ├── ColumnHeader.tsx    # 表头（排序 + 列宽）
+│   │   ├── CellRenderer.tsx    # 单元格渲染
+│   │   ├── CellEditor.tsx      # 行内编辑器
+│   │   ├── CsvToolbar.tsx      # CSV 工具栏
+│   │   ├── ContextMenu.tsx     # 右键菜单
+│   │   ├── useSelection.ts     # 选区逻辑
+│   │   ├── useKeyboard.ts      # 键盘快捷键
+│   │   └── useCopyPaste.ts     # 复制/粘贴
 │   ├── hooks.tsx               # 自定义 Hooks
-│   ├── styles/                 # CSS 样式文件
-│   │   ├── theme-bridge.css    # Cursor 设计令牌桥接
-│   │   ├── cursor-markdown.css # Cursor 风格 Markdown 样式
-│   │   ├── streamdown-controls.css  # Streamdown 控件样式
-│   │   ├── toolbar.css         # 工具栏样式
-│   │   └── milkdown-overrides.css   # Milkdown 编辑器样式覆盖
+│   ├── styles/main.css         # Tailwind CSS 样式
 │   └── __tests__/              # Webview 层单元测试
 ├── test/                       # 通用测试
 │   ├── manifest.test.ts        # package.json 完整性测试
 │   └── __mocks__/vscode.ts     # VS Code API Mock
+├── showcases/                  # 功能测试示例文件
 ├── dist/                       # 构建输出
 ├── package.json                # 扩展清单与依赖
 ├── webpack.config.js           # Webpack 双入口配置

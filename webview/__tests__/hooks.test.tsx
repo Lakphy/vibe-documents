@@ -1,61 +1,54 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVsCodeMessages, useMarkdownComponents } from '../hooks';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
+function dispatchUpdate(data: Record<string, unknown>) {
+  window.dispatchEvent(new MessageEvent('message', {
+    data: { type: 'update', ...data },
+  }));
+}
+
 describe('useVsCodeMessages', () => {
-  let addListenerSpy: ReturnType<typeof vi.spyOn>;
-  let removeListenerSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
-    addListenerSpy = vi.spyOn(window, 'addEventListener');
-    removeListenerSpy = vi.spyOn(window, 'removeEventListener');
-  });
-
-  afterEach(() => {
-    addListenerSpy.mockRestore();
-    removeListenerSpy.mockRestore();
+    vi.resetModules();
   });
 
   it('初始状态为空', () => {
     const { result } = renderHook(() => useVsCodeMessages());
     expect(result.current.content).toBe('');
     expect(result.current.baseUri).toBe('');
+    expect(result.current.fileType).toBe('markdown');
   });
 
-  it('注册 message 事件监听器', () => {
-    renderHook(() => useVsCodeMessages());
-    expect(addListenerSpy).toHaveBeenCalledWith('message', expect.any(Function));
-  });
-
-  it('卸载时移除事件监听器', () => {
-    const { unmount } = renderHook(() => useVsCodeMessages());
-    unmount();
-    expect(removeListenerSpy).toHaveBeenCalledWith('message', expect.any(Function));
-  });
-
-  it('处理 update 消息更新 content', () => {
+  it('处理 update 消息更新 content 和 baseUri', () => {
     const { result } = renderHook(() => useVsCodeMessages());
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: '# Hello', baseUri: 'https://base' },
-      }));
+      dispatchUpdate({ content: '# Hello', baseUri: 'https://base' });
     });
 
     expect(result.current.content).toBe('# Hello');
     expect(result.current.baseUri).toBe('https://base');
   });
 
-  it('忽略非 update 类型的消息', () => {
+  it('处理 update 消息更新 fileType', () => {
     const { result } = renderHook(() => useVsCodeMessages());
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'other', content: 'should-not-set' },
+      dispatchUpdate({ content: '{}', fileType: 'excalidraw' });
+    });
+
+    expect(result.current.fileType).toBe('excalidraw');
+  });
+
+  it('通过 messageBus 只接收 update 类型（非 update 不触发）', () => {
+    const { result } = renderHook(() => useVsCodeMessages());
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'toggleMode', content: 'should-not-set' },
       }));
     });
 
@@ -66,21 +59,13 @@ describe('useVsCodeMessages', () => {
     const { result } = renderHook(() => useVsCodeMessages());
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: 'first' },
-      }));
+      dispatchUpdate({ content: 'first' });
     });
-
     expect(result.current.content).toBe('first');
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update' },
-      }));
+      dispatchUpdate({});
     });
-
     expect(result.current.content).toBe('first');
   });
 
@@ -88,21 +73,13 @@ describe('useVsCodeMessages', () => {
     const { result } = renderHook(() => useVsCodeMessages());
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: 'initial' },
-      }));
+      dispatchUpdate({ content: 'initial' });
     });
-
     expect(result.current.content).toBe('initial');
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: '' },
-      }));
+      dispatchUpdate({ content: '' });
     });
-
     expect(result.current.content).toBe('');
   });
 
@@ -110,22 +87,30 @@ describe('useVsCodeMessages', () => {
     const { result } = renderHook(() => useVsCodeMessages());
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: '# A', baseUri: 'https://base1' },
-      }));
+      dispatchUpdate({ content: '# A', baseUri: 'https://base1' });
     });
-
     expect(result.current.baseUri).toBe('https://base1');
 
     act(() => {
-      const handler = addListenerSpy.mock.calls.find(c => c[0] === 'message')![1] as EventListener;
-      handler(new MessageEvent('message', {
-        data: { type: 'update', content: '# B' },
-      }));
+      dispatchUpdate({ content: '# B' });
     });
-
     expect(result.current.baseUri).toBe('https://base1');
+  });
+
+  it('卸载后 messageBus 取消订阅', () => {
+    const { result, unmount } = renderHook(() => useVsCodeMessages());
+
+    act(() => {
+      dispatchUpdate({ content: 'before unmount' });
+    });
+    expect(result.current.content).toBe('before unmount');
+
+    unmount();
+
+    // 不应报错，但因 unmount 后 result 不再更新，这里只检查不抛异常
+    expect(() => {
+      dispatchUpdate({ content: 'after unmount' });
+    }).not.toThrow();
   });
 });
 

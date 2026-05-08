@@ -87,20 +87,33 @@ export const workspace = {
 };
 
 export class WorkspaceEdit {
-  private edits: Array<{ uri: any; range: any; newText: string }> = [];
+  private _edits: Array<{ type: 'replace' | 'insert' | 'delete'; uri: any; range?: any; position?: any; newText?: string }> = [];
   replace(uri: any, range: any, newText: string) {
-    this.edits.push({ uri, range, newText });
+    this._edits.push({ type: 'replace', uri, range, newText });
+  }
+  insert(uri: any, position: any, newText: string) {
+    this._edits.push({ type: 'insert', uri, position, newText });
+  }
+  delete(uri: any, range: any) {
+    this._edits.push({ type: 'delete', uri, range });
   }
   getEdits() {
-    return this.edits;
+    return this._edits;
   }
 }
 
 export class Range {
-  constructor(
-    public readonly start: any,
-    public readonly end: any
-  ) {}
+  public readonly start: { line: number; character: number };
+  public readonly end: { line: number; character: number };
+  constructor(startLine: number | any, startChar?: number | any, endLine?: number, endChar?: number) {
+    if (typeof startLine === 'number' && typeof startChar === 'number') {
+      this.start = { line: startLine, character: startChar };
+      this.end = { line: endLine ?? startLine, character: endChar ?? startChar };
+    } else {
+      this.start = startLine;
+      this.end = startChar;
+    }
+  }
 }
 
 export class Position {
@@ -108,6 +121,15 @@ export class Position {
     public readonly line: number,
     public readonly character: number
   ) {}
+}
+
+export class CodeLens {
+  public readonly range: Range;
+  public readonly command?: any;
+  constructor(range: Range, command?: any) {
+    this.range = range;
+    this.command = command;
+  }
 }
 
 export const commands = {

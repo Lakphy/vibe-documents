@@ -1,55 +1,42 @@
 import { useState, useEffect, useMemo } from 'react';
 import { resolveImageSrc } from '../src/utils';
 import { getVsCodeApi } from './vscodeApi';
+import { subscribe } from './messageBus';
+import { useIsDark } from './ThemeContext';
+
+export type FileType = 'markdown' | 'excalidraw' | 'csv';
 
 export interface VsCodeMessage {
   type: string;
   content?: string;
   baseUri?: string;
+  fileType?: FileType;
 }
 
 export function useVsCodeMessages() {
   const [content, setContent] = useState('');
   const [baseUri, setBaseUri] = useState('');
+  const [fileType, setFileType] = useState<FileType>('markdown');
 
   useEffect(() => {
-    const handler = (event: MessageEvent<VsCodeMessage>) => {
-      const msg = event.data;
-      if (msg.type === 'update' && msg.content !== undefined) {
+    const unsub = subscribe('update', (msg: VsCodeMessage) => {
+      if (msg.content !== undefined) {
         setContent(msg.content);
-        if (msg.baseUri) {
-          setBaseUri(msg.baseUri);
-        }
+        if (msg.baseUri) setBaseUri(msg.baseUri);
+        if (msg.fileType) setFileType(msg.fileType);
       }
-    };
-    window.addEventListener('message', handler);
+    });
 
     getVsCodeApi()?.postMessage({ type: 'ready' });
 
-    return () => window.removeEventListener('message', handler);
+    return unsub;
   }, []);
 
-  return { content, baseUri };
+  return { content, baseUri, fileType };
 }
 
 export function useVsCodeTheme() {
-  const [isDark, setIsDark] = useState(() => {
-    return document.body.classList.contains('vscode-dark') ||
-           document.body.classList.contains('vscode-high-contrast');
-  });
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(
-        document.body.classList.contains('vscode-dark') ||
-        document.body.classList.contains('vscode-high-contrast')
-      );
-    });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  return isDark;
+  return useIsDark();
 }
 
 export function useMarkdownComponents(baseUri: string) {

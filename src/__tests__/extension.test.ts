@@ -36,7 +36,7 @@ describe('extension', () => {
 
     it('将命令添加到 subscriptions', () => {
       activate(ctx);
-      expect(ctx.subscriptions.length).toBe(4);
+      expect(ctx.subscriptions.length).toBe(8);
     });
 
     it('注册 toggleMode 命令', () => {

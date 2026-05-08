@@ -144,6 +144,51 @@ describe('MarkdownPreviewProvider', () => {
         );
       });
     });
+
+    it('markdown 文件 postMessage 携带 fileType: markdown', async () => {
+      const uri = vscode.Uri.file('/test/readme.md');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ fileType: 'markdown' })
+        );
+      });
+    });
+
+    it('excalidraw 文件 postMessage 携带 fileType: excalidraw', async () => {
+      const uri = vscode.Uri.file('/test/diagram.excalidraw');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ fileType: 'excalidraw' })
+        );
+      });
+    });
+
+    it('csv 文件 postMessage 携带 fileType: csv', async () => {
+      const uri = vscode.Uri.file('/test/data.csv');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ fileType: 'csv' })
+        );
+      });
+    });
   });
 
   describe('文件监听', () => {
@@ -166,6 +211,107 @@ describe('MarkdownPreviewProvider', () => {
       provider.showPreview(uri, vscode.ViewColumn.Active);
 
       expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('debounce 与内容去重', () => {
+    it('文档变更经过 debounce 后才推送', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'update' })
+        );
+      });
+
+      panel.webview.postMessage.mockClear();
+
+      const editorCallback = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+
+      let callCount = 0;
+      vi.mocked(vscode.workspace.openTextDocument).mockImplementation(async () => ({
+        getText: () => `# Change ${++callCount}`,
+        uri: vscode.Uri.file('/test/file.md'),
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any));
+
+      editorCallback({ document: { uri: { toString: () => uri.toString() } } });
+      editorCallback({ document: { uri: { toString: () => uri.toString() } } });
+      editorCallback({ document: { uri: { toString: () => uri.toString() } } });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalled();
+      }, { timeout: 500 });
+
+      expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('相同内容不重复推送', async () => {
+      const fixedContent = '# Fixed Content';
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => fixedContent,
+        uri: vscode.Uri.file('/test/file.md'),
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      const uri = vscode.Uri.file('/test/file.md');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+      await messageHandler({ type: 'ready' });
+
+      await vi.waitFor(() => {
+        expect(panel.webview.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'update', content: fixedContent })
+        );
+      });
+
+      panel.webview.postMessage.mockClear();
+
+      const editorCallback = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+
+      editorCallback({ document: { uri: { toString: () => uri.toString() } } });
+
+      await new Promise(r => setTimeout(r, 300));
+
+      expect(panel.webview.postMessage).not.toHaveBeenCalled();
+    });
+
+    it('dispose 面板后 debounce/maxWait timer 均被清理，不再触发 postMessage', async () => {
+      vi.useFakeTimers();
+
+      try {
+        let callCount = 0;
+        vi.mocked(vscode.workspace.openTextDocument).mockImplementation(async () => ({
+          getText: () => `# Dispose Test ${++callCount}`,
+          uri: vscode.Uri.file('/test/file.md'),
+          positionAt: (offset: number) => new vscode.Position(0, offset),
+        } as any));
+
+        const uri = vscode.Uri.file('/test/file.md');
+        provider.showPreview(uri, vscode.ViewColumn.Active);
+
+        const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+        panel.webview.postMessage.mockClear();
+
+        const editorCallback = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+        editorCallback({ document: { uri: { toString: () => uri.toString() } } });
+
+        panel._disposeCallback();
+
+        await vi.advanceTimersByTimeAsync(2000);
+
+        expect(panel.webview.postMessage).not.toHaveBeenCalled();
+        expect(provider.hasPanel(uri.toString())).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

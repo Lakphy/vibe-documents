@@ -3,7 +3,12 @@ node_modules/**
 src/**
 webview/**
 test/**
+showcases/**
+wiki/**
 webpack.config.js
+vite.config.webview.ts
+postcss.config.js
+vitest.config.ts
 tsconfig.json
 .gitignore
 *.map
@@ -13,6 +18,4 @@ dist/src/**
 dist/webview/**
 **/*.ts
 !dist/extension.js
-!dist/webview.js
-!dist/webview.css
-!dist/fonts/**
+!dist/webview-assets/**

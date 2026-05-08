@@ -15,6 +15,7 @@ import mermaidLib from 'mermaid';
 import { createRoot } from 'react-dom/client';
 import { getVsCodeApi } from './vscodeApi';
 import { ExcalidrawEditMode } from './ExcalidrawBlock';
+import { subscribe } from './messageBus';
 
 let mermaidInitialized = false;
 function ensureMermaidInit(isDark: boolean) {
@@ -194,33 +195,28 @@ function MilkdownEditorInner({ initialContent }: MilkdownEditorInnerProps) {
   const [loading, getInstance] = useInstance();
 
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const msg = event.data;
-      if (msg.type === 'update' && msg.content !== undefined) {
-        if (loading) return;
-        const editor = getInstance();
-        if (!editor) return;
+    return subscribe('update', (msg) => {
+      if (msg.content === undefined) return;
+      if (loading) return;
+      const editor = getInstance();
+      if (!editor) return;
 
-        try {
-          const currentMarkdown = editor.action(getMarkdown());
-          if (currentMarkdown === msg.content) return;
-        } catch {
-          // editor may not be ready
-        }
-
-        isExternalUpdate.current = true;
-        lastSentContent.current = msg.content;
-        try {
-          editor.action(replaceAll(msg.content));
-        } catch {
-          // ignore errors during replacement
-        }
-        isExternalUpdate.current = false;
+      try {
+        const currentMarkdown = editor.action(getMarkdown());
+        if (currentMarkdown === msg.content) return;
+      } catch {
+        // editor may not be ready
       }
-    };
 
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+      isExternalUpdate.current = true;
+      lastSentContent.current = msg.content;
+      try {
+        editor.action(replaceAll(msg.content));
+      } catch {
+        // ignore errors during replacement
+      }
+      isExternalUpdate.current = false;
+    });
   }, [loading, getInstance]);
 
   return <Milkdown />;

@@ -72,4 +72,118 @@ describe('编辑同步（双向通信）', () => {
       });
     });
   });
+
+  describe('增量 diff 编辑', () => {
+    it('edit 消息调用 workspace.applyEdit 而非全量替换', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const currentText = '# Hello World';
+      const newText = '# Hello Vibe World';
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => currentText,
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content: newText });
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalled();
+      const editArg = vi.mocked(vscode.workspace.applyEdit).mock.calls[0][0] as vscode.WorkspaceEdit;
+      const edits = (editArg as any).getEdits();
+      expect(edits.length).toBeGreaterThan(0);
+      const hasInsert = edits.some((e: any) => e.type === 'insert');
+      expect(hasInsert).toBe(true);
+    });
+
+    it('内容相同时不调用 applyEdit', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const content = '# Same Content';
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => content,
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content });
+
+      expect(vscode.workspace.applyEdit).not.toHaveBeenCalled();
+    });
+
+    it('删除文本时产生 delete 类型的 edit', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const currentText = '# Hello World';
+      const newText = '# Hello';
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => currentText,
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content: newText });
+
+      const editArg = vi.mocked(vscode.workspace.applyEdit).mock.calls[0][0] as vscode.WorkspaceEdit;
+      const edits = (editArg as any).getEdits();
+      const hasDelete = edits.some((e: any) => e.type === 'delete');
+      expect(hasDelete).toBe(true);
+    });
+
+    it('edit 消息触发 applyEdit 使用增量 diff', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => '# Original',
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content: '# Modified' });
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalled();
+      const editArg = vi.mocked(vscode.workspace.applyEdit).mock.calls[0][0] as any;
+      const edits = editArg.getEdits();
+      expect(edits.length).toBeGreaterThan(0);
+    });
+
+    it('edit 内容与当前文档相同时不调用 applyEdit', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const content = '# Same';
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => content,
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content });
+
+      expect(vscode.workspace.applyEdit).not.toHaveBeenCalled();
+    });
+  });
 });

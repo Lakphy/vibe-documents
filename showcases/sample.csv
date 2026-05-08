@@ -1,0 +1,26 @@
+id,name,email,age,city,department,salary,join_date,active
+1,Alice Johnson,alice@example.com,30,New York,Engineering,95000,2020-03-15,true
+2,Bob Smith,bob@example.com,25,Los Angeles,Design,72000,2021-06-01,true
+3,Charlie Brown,charlie@example.com,35,San Francisco,Engineering,115000,2018-09-20,true
+4,Diana Ross,diana@example.com,28,Chicago,Marketing,68000,2022-01-10,true
+5,Edward Chen,edward@example.com,42,Seattle,Engineering,130000,2016-11-05,true
+6,Fiona Garcia,fiona@example.com,31,Austin,Product,88000,2019-07-22,true
+7,George Wilson,george@example.com,27,Boston,Design,75000,2021-11-30,false
+8,Hannah Lee,hannah@example.com,33,Denver,Engineering,102000,2019-02-14,true
+9,Ivan Petrov,ivan@example.com,29,Portland,Marketing,71000,2020-08-18,true
+10,Julia Martinez,julia@example.com,38,Miami,Product,95000,2017-04-03,true
+11,Kevin O'Brien,kevin@example.com,26,Nashville,Engineering,82000,2022-05-20,true
+12,Lisa Wang,lisa@example.com,34,San Diego,Design,85000,2018-12-01,true
+13,Michael Brown,michael@example.com,41,Phoenix,Engineering,125000,2015-06-15,false
+14,Nancy Kim,nancy@example.com,30,Atlanta,Marketing,73000,2020-10-08,true
+15,Oscar Diaz,oscar@example.com,36,Dallas,Product,92000,2018-03-25,true
+16,Patricia Yang,patricia@example.com,29,Minneapolis,Engineering,98000,2021-01-12,true
+17,Quinn Murphy,quinn@example.com,32,Detroit,Design,79000,2019-09-30,true
+18,Robert Taylor,robert@example.com,45,Washington DC,Engineering,140000,2014-02-28,true
+19,Sarah Johnson,sarah@example.com,27,Philadelphia,Marketing,67000,2022-07-15,true
+20,Thomas Anderson,"a ""special"" name",33,Columbus,Product,86000,2019-05-10,true
+21,Uma Patel,uma@example.com,31,Charlotte,Engineering,105000,2020-04-01,true
+22,Victor Hugo,victor@example.com,28,Las Vegas,Design,74000,2021-08-22,false
+23,Wendy Zhang,wendy@example.com,37,Sacramento,Engineering,112000,2017-11-18,true
+24,Xavier Brooks,xavier@example.com,24,Raleigh,Marketing,62000,2023-01-05,true
+25,Yuki Tanaka,yuki@example.com,39,Honolulu,Product,98000,2016-07-20,true

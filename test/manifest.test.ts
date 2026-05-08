@@ -165,7 +165,6 @@ describe('项目文件完整性', () => {
     'webview/SourceEditor.tsx',
     'webview/ExcalidrawBlock.tsx',
     'webview/styles/main.css',
-    'postcss.config.js',
   ];
 
   requiredFiles.forEach(file => {

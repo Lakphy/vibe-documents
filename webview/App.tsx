@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useDeferredValue, useEffect, lazy, Suspense } from 'react';
 import { Streamdown } from 'streamdown';
 import { mermaid } from '@streamdown/mermaid';
 import { createCodePlugin } from '@streamdown/code';
@@ -11,9 +11,21 @@ import {
 } from 'lucide-react';
 import { useVsCodeMessages, useMarkdownComponents, useVsCodeTheme } from './hooks';
 import { Toolbar, type EditorMode } from './Toolbar';
-import { MilkdownEditor } from './MilkdownEditor';
-import { SourceEditor } from './SourceEditor';
 import { ExcalidrawRenderer } from './ExcalidrawBlock';
+import { subscribe } from './messageBus';
+
+const MilkdownEditor = lazy(() => import('./MilkdownEditor').then(m => ({ default: m.MilkdownEditor })));
+const SourceEditor = lazy(() => import('./SourceEditor').then(m => ({ default: m.SourceEditor })));
+const ExcalidrawEditor = lazy(() => import('./ExcalidrawEditor').then(m => ({ default: m.ExcalidrawEditor })));
+const CsvViewer = lazy(() => import('./CsvViewer').then(m => ({ default: m.CsvViewer })));
+
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[200px]" style={{ color: 'var(--color-cursor-text-tertiary)' }}>
+      Loading...
+    </div>
+  );
+}
 
 const codePlugin = createCodePlugin({
   themes: ['github-light', 'github-dark'],
@@ -33,23 +45,28 @@ const lucideIcons = {
 };
 
 export function App() {
-  const { content, baseUri } = useVsCodeMessages();
+  const { content: rawContent, baseUri, fileType } = useVsCodeMessages();
+  const content = useDeferredValue(rawContent);
   const [mode, setMode] = useState<EditorMode>('preview');
   const isDark = useVsCodeTheme();
   const components = useMarkdownComponents(baseUri);
+  const visitedModes = useRef(new Set<EditorMode>(['preview']));
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    if (!visitedModes.current.has(mode)) {
+      visitedModes.current.add(mode);
+      forceUpdate(n => n + 1);
+    }
+  }, [mode]);
 
   const MODES: EditorMode[] = ['preview', 'wysiwyg', 'source'];
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (event.data?.type === 'toggleMode') {
-        setMode(prev => {
-          const idx = MODES.indexOf(prev);
-          return MODES[(idx + 1) % MODES.length];
-        });
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+    return subscribe('toggleMode', () => {
+      setMode(prev => {
+        const idx = MODES.indexOf(prev);
+        return MODES[(idx + 1) % MODES.length];
+      });
+    });
   }, []);
 
   const mermaidOptions = useMemo(() => ({
@@ -82,6 +99,22 @@ export function App() {
     ],
   }), []);
 
+  if (fileType === 'excalidraw') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <ExcalidrawEditor content={content} />
+      </Suspense>
+    );
+  }
+
+  if (fileType === 'csv') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <CsvViewer content={content} />
+      </Suspense>
+    );
+  }
+
   if (!content && mode === 'preview') {
     return (
       <div className="markdown-section markdown-empty">
@@ -94,9 +127,9 @@ export function App() {
     <div className="flex flex-col min-h-screen">
       <Toolbar mode={mode} onModeChange={setMode} />
       <div className="flex-1">
-        {mode === 'preview' && (
+        <div style={{ display: mode === 'preview' ? 'block' : 'none' }}>
           <div className="markdown-container-root">
-            <div className="markdown-section">
+            <div className="markdown-section vd-typography">
               <Streamdown
                 components={components}
                 plugins={plugins}
@@ -107,15 +140,23 @@ export function App() {
               </Streamdown>
             </div>
           </div>
-        )}
-        {mode === 'wysiwyg' && (
-          <div className="max-w-[900px] mx-auto px-8 pb-16">
-            <MilkdownEditor content={content} />
+        </div>
+        {visitedModes.current.has('wysiwyg') && (
+          <div style={{ display: mode === 'wysiwyg' ? 'block' : 'none' }}>
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="max-w-[900px] mx-auto px-8 pb-16 vd-typography">
+                <MilkdownEditor content={content} />
+              </div>
+            </Suspense>
           </div>
         )}
-        {mode === 'source' && (
-          <div className="h-[calc(100vh-44px)]">
-            <SourceEditor content={content} />
+        {visitedModes.current.has('source') && (
+          <div style={{ display: mode === 'source' ? 'block' : 'none' }}>
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="h-[calc(100vh-44px)]">
+                <SourceEditor content={content} />
+              </div>
+            </Suspense>
           </div>
         )}
       </div>

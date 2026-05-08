@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { useIsDark } from './ThemeContext';
 
 const ExcalidrawComponent = lazy(() =>
   import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw }))
@@ -11,29 +12,9 @@ interface ExcalidrawRendererProps {
   meta?: string;
 }
 
-function useIsDarkTheme() {
-  const [isDark, setIsDark] = useState(() =>
-    document.body.classList.contains('vscode-dark') ||
-    document.body.classList.contains('vscode-high-contrast')
-  );
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(
-        document.body.classList.contains('vscode-dark') ||
-        document.body.classList.contains('vscode-high-contrast')
-      );
-    });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  return isDark;
-}
-
 /** 预览模式：只读 Excalidraw 渲染（用于 Streamdown） */
 export function ExcalidrawRenderer({ code, isIncomplete }: ExcalidrawRendererProps) {
-  const isDark = useIsDarkTheme();
+  const isDark = useIsDark();
   const [error, setError] = useState<string | null>(null);
 
   const sceneData = useMemo(() => {
@@ -123,7 +104,7 @@ interface ExcalidrawEditModeProps {
 }
 
 export function ExcalidrawEditMode({ initialCode, onChange }: ExcalidrawEditModeProps) {
-  const isDark = useIsDarkTheme();
+  const isDark = useIsDark();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const isInternalChange = useRef(false);

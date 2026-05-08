@@ -95,6 +95,34 @@ Vibe Documents 提供三种模式：
 
 在 **编辑模式** 或 **源码模式** 下修改内容，变更会实时写回源文件。同时，在 VS Code 编辑器中直接编辑源文件，预览窗口也会实时更新。
 
+### 打开 Excalidraw 编辑器
+
+`.excalidraw` 文件可以直接在扩展中打开为全屏可编辑的 Excalidraw 画布：
+
+1. **编辑器标题栏**：打开 `.excalidraw` 文件后，点击右上角预览图标
+2. **资源管理器右键菜单**：右键 `.excalidraw` 文件 → `Vibe: Open Excalidraw Editor`
+3. **快捷键**：`Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）
+
+编辑内容会自动回写到源文件。
+
+### 打开 CSV 编辑器
+
+`.csv` 文件可以在高性能表格编辑器中打开：
+
+1. **编辑器标题栏**：打开 `.csv` 文件后，点击右上角预览图标
+2. **资源管理器右键菜单**：右键 `.csv` 文件 → `Vibe: Open CSV Preview`
+3. **快捷键**：`Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）
+
+CSV 编辑器功能：
+- **虚拟滚动** — 流畅处理十万行级别数据
+- **单元格编辑** — 双击或按 Enter/F2 进入编辑
+- **行列操作** — 右键菜单插入/删除行列
+- **复制粘贴** — 支持与 Excel 互通的 TSV 格式
+- **撤销重做** — `Ctrl+Z` / `Ctrl+Shift+Z`
+- **搜索替换** — `Ctrl+F` 打开搜索面板
+- **列排序** — 点击表头排序（自动检测数字/文本）
+- **列宽调整** — 拖拽表头边界
+
 ***
 
 ## 支持的 Markdown 特性
@@ -147,10 +175,15 @@ graph TD
 
 ## 快捷键速查
 
-| 操作   | Windows/Linux  | macOS         |
-| ---- | -------------- | ------------- |
-| 侧边预览 | `Ctrl+Shift+V` | `Cmd+Shift+V` |
+| 操作 | Windows/Linux | macOS |
+|------|---------------|-------|
+| Markdown 预览 | `Ctrl+Shift+V` | `Cmd+Shift+V` |
+| Excalidraw 预览 | `Ctrl+Shift+V`（.excalidraw 文件） | `Cmd+Shift+V` |
+| CSV 预览 | `Ctrl+Shift+V`（.csv 文件） | `Cmd+Shift+V` |
 | 切换模式 | `Ctrl+Shift+E` | `Cmd+Shift+E` |
+| CSV 搜索 | `Ctrl+F` | `Cmd+F` |
+| CSV 撤销 | `Ctrl+Z` | `Cmd+Z` |
+| CSV 重做 | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
 
 ***
 
