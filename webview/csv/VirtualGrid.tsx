@@ -8,6 +8,7 @@ import { CellEditor } from './CellEditor';
 import { useSelection, isCellInSelection } from './useSelection';
 import { useKeyboard } from './useKeyboard';
 import { useCopyPaste } from './useCopyPaste';
+import { useDragReorder, type DragIndicator } from './useDragReorder';
 
 interface VirtualGridProps {
   state: CsvState;
@@ -16,10 +17,34 @@ interface VirtualGridProps {
   dispatch: (action: CsvAction) => void;
   canUndo: boolean;
   canRedo: boolean;
-  onSearchToggle: () => void;
 }
 
-export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, onSearchToggle }: VirtualGridProps) {
+function DragIndicatorLine({ indicator, totalWidth, getColWidth }: {
+  indicator: DragIndicator;
+  totalWidth: number;
+  getColWidth: (i: number) => number;
+}) {
+  if (indicator.type === 'row') {
+    const y = indicator.targetIndex * ROW_HEIGHT;
+    return (
+      <div
+        className="csv-drag-indicator-row"
+        style={{ position: 'absolute', top: y - 1, left: 0, width: totalWidth + ROW_NUMBER_WIDTH, height: 2, zIndex: 50 }}
+      />
+    );
+  } else {
+    let x = ROW_NUMBER_WIDTH;
+    for (let i = 0; i < indicator.targetIndex; i++) x += getColWidth(i);
+    return (
+      <div
+        className="csv-drag-indicator-col"
+        style={{ position: 'absolute', top: -HEADER_HEIGHT, left: x - 1, width: 2, height: '100%', zIndex: 50 }}
+      />
+    );
+  }
+}
+
+export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: VirtualGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -33,10 +58,19 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
     totalCols,
   });
 
-  useKeyboard({ state, sortedToSourceMap, dispatch, moveSelection, containerRef, onSearchToggle });
+  useKeyboard({ state, sortedToSourceMap, dispatch, moveSelection, containerRef });
   useCopyPaste({ state, sortedRows, sortedToSourceMap, dispatch, containerRef });
 
   const getColWidth = useCallback((index: number) => columnWidths[index] || DEFAULT_COL_WIDTH, [columnWidths]);
+
+  const { indicator, handleRowMouseDown, handleColMouseDown } = useDragReorder({
+    dispatch,
+    scrollRef,
+    totalRows,
+    totalCols,
+    columnWidths,
+    sortActive: sort.direction !== null,
+  });
 
   const rowVirtualizer = useVirtualizer({
     count: totalRows,
@@ -104,7 +138,7 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
     if (!editingCell) return null;
     let left = ROW_NUMBER_WIDTH;
     for (let i = 0; i < editingCell.col; i++) left += getColWidth(i);
-    const top = HEADER_HEIGHT + editingCell.row * ROW_HEIGHT;
+    const top = editingCell.row * ROW_HEIGHT;
     return { left, top, width: getColWidth(editingCell.col), height: ROW_HEIGHT };
   }, [editingCell, getColWidth]);
 
@@ -129,6 +163,7 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
               width={getColWidth(virtualCol.index)}
               sort={sort}
               dispatch={dispatch}
+              onDragStart={handleColMouseDown}
             />
           ))}
         </div>
@@ -146,6 +181,8 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
             const rowData = sortedRows[virtualRow.index];
             if (!rowData) return null;
 
+            const isDragSource = indicator?.type === 'row' && indicator.sourceIndex === virtualRow.index;
+
             return (
               <div
                 key={virtualRow.index}
@@ -155,11 +192,13 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
                   top: virtualRow.start,
                   height: ROW_HEIGHT,
                   width: totalWidth + ROW_NUMBER_WIDTH,
+                  opacity: isDragSource ? 0.4 : 1,
                 }}
               >
                 <div
-                  className="csv-row-number"
+                  className={`csv-row-number ${sort.direction === null ? 'csv-row-number--draggable' : ''}`}
                   style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH, height: ROW_HEIGHT }}
+                  onMouseDown={e => handleRowMouseDown(virtualRow.index, e)}
                 >
                   {virtualRow.index + 1}
                 </div>
@@ -188,6 +227,11 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch, on
               </div>
             );
           })}
+
+          {/* 拖拽指示线 */}
+          {indicator && (
+            <DragIndicatorLine indicator={indicator} totalWidth={totalWidth} getColWidth={getColWidth} />
+          )}
 
           {/* 编辑覆盖层 */}
           {editingCell && editingCellPosition && (

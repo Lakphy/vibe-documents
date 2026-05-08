@@ -13,6 +13,9 @@ import { useVsCodeMessages, useMarkdownComponents, useVsCodeTheme } from './hook
 import { Toolbar, type EditorMode } from './Toolbar';
 import { ExcalidrawRenderer } from './ExcalidrawBlock';
 import { subscribe } from './messageBus';
+import type { EditorView } from '@codemirror/view';
+import { useSearch } from './search/useSearch';
+import { SearchWidget } from './search/SearchWidget';
 
 const MilkdownEditor = lazy(() => import('./MilkdownEditor').then(m => ({ default: m.MilkdownEditor })));
 const SourceEditor = lazy(() => import('./SourceEditor').then(m => ({ default: m.SourceEditor })));
@@ -52,6 +55,11 @@ export function App() {
   const components = useMarkdownComponents(baseUri);
   const visitedModes = useRef(new Set<EditorMode>(['preview']));
   const [, forceUpdate] = useState(0);
+
+  const contentContainerRef = useRef<HTMLDivElement>(null);
+  const cmViewRef = useRef<EditorView | null>(null);
+  const { state: searchState, actions: searchActions, searchInputRef } = useSearch(mode, contentContainerRef, cmViewRef);
+
   useEffect(() => {
     if (!visitedModes.current.has(mode)) {
       visitedModes.current.add(mode);
@@ -68,6 +76,20 @@ export function App() {
       });
     });
   }, []);
+
+  // Cmd+F / Ctrl+F interception (CSV/Excalidraw 模式有自己的搜索处理)
+  useEffect(() => {
+    if (fileType === 'csv' || fileType === 'excalidraw') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        searchActions.open();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [searchActions, fileType]);
 
   const mermaidOptions = useMemo(() => ({
     config: {
@@ -126,7 +148,8 @@ export function App() {
   return (
     <div className="flex flex-col min-h-screen">
       <Toolbar mode={mode} onModeChange={setMode} />
-      <div className="flex-1">
+      <SearchWidget state={searchState} actions={searchActions} mode={mode} searchInputRef={searchInputRef} />
+      <div className="flex-1" ref={contentContainerRef}>
         <div style={{ display: mode === 'preview' ? 'block' : 'none' }}>
           <div className="markdown-container-root">
             <div className="markdown-section vd-typography">
@@ -154,7 +177,7 @@ export function App() {
           <div style={{ display: mode === 'source' ? 'block' : 'none' }}>
             <Suspense fallback={<LoadingFallback />}>
               <div className="h-[calc(100vh-44px)]">
-                <SourceEditor content={content} />
+                <SourceEditor content={content} cmViewRef={cmViewRef} />
               </div>
             </Suspense>
           </div>

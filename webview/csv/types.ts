@@ -59,6 +59,8 @@ export type CsvAction =
   | { type: 'REPLACE_CURRENT' }
   | { type: 'REPLACE_ALL' }
   | { type: 'PASTE_CELLS'; startRow: number; startCol: number; data: string[][] }
+  | { type: 'MOVE_ROW'; from: number; to: number }
+  | { type: 'MOVE_COL'; from: number; to: number }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 

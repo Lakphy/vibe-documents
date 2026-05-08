@@ -9,9 +9,10 @@ interface ColumnHeaderProps {
   width: number;
   sort: SortState;
   dispatch: (action: CsvAction) => void;
+  onDragStart: (colIndex: number, e: React.MouseEvent) => void;
 }
 
-export const ColumnHeader = memo(function ColumnHeader({ index, label, width, sort, dispatch }: ColumnHeaderProps) {
+export const ColumnHeader = memo(function ColumnHeader({ index, label, width, sort, dispatch, onDragStart }: ColumnHeaderProps) {
   const resizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -50,9 +51,17 @@ export const ColumnHeader = memo(function ColumnHeader({ index, label, width, so
     document.addEventListener('mouseup', handleUp);
   }, [width, index, dispatch]);
 
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    onDragStart(index, e);
+  }, [index, onDragStart]);
+
   return (
     <div className="csv-header-cell" style={{ width, minWidth: width }}>
-      <div className="csv-header-cell-content" onClick={handleSort}>
+      <div
+        className="csv-header-cell-content"
+        onClick={handleSort}
+        onMouseDown={handleMouseDown}
+      >
         <span className="csv-header-label">{label}</span>
         {sort.columnIndex === index && sort.direction === 'asc' && <ArrowUp size={12} />}
         {sort.columnIndex === index && sort.direction === 'desc' && <ArrowDown size={12} />}

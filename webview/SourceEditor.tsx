@@ -1,16 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { getVsCodeApi } from './vscodeApi';
 import { subscribe } from './messageBus';
+import { createSearchExtension } from './search/cmSearchBridge';
 
 interface SourceEditorProps {
   content: string;
+  cmViewRef?: MutableRefObject<EditorView | null>;
 }
 
-export function SourceEditor({ content }: SourceEditorProps) {
+export function SourceEditor({ content, cmViewRef }: SourceEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const isExternalUpdate = useRef(false);
@@ -75,6 +77,7 @@ export function SourceEditor({ content }: SourceEditorProps) {
         theme,
         updateListener,
         EditorView.lineWrapping,
+        createSearchExtension(),
       ],
     });
 
@@ -84,10 +87,12 @@ export function SourceEditor({ content }: SourceEditorProps) {
     });
 
     viewRef.current = view;
+    if (cmViewRef) cmViewRef.current = view;
 
     return () => {
       view.destroy();
       viewRef.current = null;
+      if (cmViewRef) cmViewRef.current = null;
     };
   }, []);
 

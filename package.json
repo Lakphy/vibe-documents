@@ -2,7 +2,7 @@
   "name": "vibe-documents",
   "displayName": "Vibe Documents - Cursor-style Markdown Preview",
   "description": "A beautiful Markdown preview extension inspired by Cursor's rendering style, with Mermaid, KaTeX, Shiki code highlighting and more.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "lakphy",
   "license": "MIT",
   "repository": {
@@ -165,6 +165,7 @@
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.42.1",
     "@excalidraw/excalidraw": "^0.18.1",

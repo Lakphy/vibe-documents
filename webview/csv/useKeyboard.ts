@@ -7,19 +7,12 @@ interface UseKeyboardProps {
   dispatch: (action: CsvAction) => void;
   moveSelection: (current: Selection | null, dir: 'up' | 'down' | 'left' | 'right', extend?: boolean) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
-  onSearchToggle: () => void;
 }
 
-export function useKeyboard({ state, sortedToSourceMap, dispatch, moveSelection, containerRef, onSearchToggle }: UseKeyboardProps) {
+export function useKeyboard({ state, sortedToSourceMap, dispatch, moveSelection, containerRef }: UseKeyboardProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-
-    if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      onSearchToggle();
-      return;
-    }
 
     if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
       e.preventDefault();
@@ -105,7 +98,7 @@ export function useKeyboard({ state, sortedToSourceMap, dispatch, moveSelection,
         }
         break;
     }
-  }, [state, dispatch, moveSelection, onSearchToggle]);
+  }, [state, dispatch, moveSelection]);
 
   useEffect(() => {
     const el = containerRef.current;

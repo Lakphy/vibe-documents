@@ -12,9 +12,11 @@ interface CsvToolbarProps {
   canRedo: boolean;
   showSearch: boolean;
   onToggleSearch: () => void;
+  onCloseSearch: () => void;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onToggleSearch }: CsvToolbarProps) {
+export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onToggleSearch, onCloseSearch, searchInputRef }: CsvToolbarProps) {
   const { search, rows, headers } = state;
 
   const handleSearchChange = useCallback((query: string) => {
@@ -40,6 +42,20 @@ export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onTo
   const toggleReplace = useCallback(() => {
     dispatch({ type: 'SET_SEARCH', search: { showReplace: !search.showReplace } });
   }, [search.showReplace, dispatch]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCloseSearch();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        prevMatch();
+      } else {
+        nextMatch();
+      }
+    }
+  }, [onCloseSearch, nextMatch, prevMatch]);
 
   return (
     <div className="csv-toolbar">
@@ -81,7 +97,7 @@ export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onTo
         <button
           className={`csv-toolbar-btn ${showSearch ? 'csv-toolbar-btn--active' : ''}`}
           onClick={onToggleSearch}
-          title="搜索 (Ctrl+F)"
+          title="搜索 (Cmd+F)"
         >
           <Search size={14} />
         </button>
@@ -100,11 +116,13 @@ export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onTo
               <Replace size={12} />
             </button>
             <input
+              ref={searchInputRef}
               type="text"
               className="csv-search-input"
               placeholder="搜索..."
               value={search.query}
               onChange={e => handleSearchChange(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               autoFocus
             />
             <span className="csv-search-count">
@@ -118,7 +136,7 @@ export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onTo
             <button className="csv-toolbar-btn csv-toolbar-btn--sm" onClick={nextMatch} disabled={search.matches.length === 0}>
               <ChevronDown size={12} />
             </button>
-            <button className="csv-toolbar-btn csv-toolbar-btn--sm" onClick={onToggleSearch}>
+            <button className="csv-toolbar-btn csv-toolbar-btn--sm" onClick={onCloseSearch}>
               <X size={12} />
             </button>
           </div>
@@ -131,6 +149,12 @@ export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onTo
                 placeholder="替换为..."
                 value={search.replaceText}
                 onChange={e => handleReplaceChange(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    onCloseSearch();
+                  }
+                }}
               />
               <button
                 className="csv-toolbar-btn csv-toolbar-btn--sm"

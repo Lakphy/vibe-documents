@@ -114,14 +114,22 @@ Vibe Documents 提供三种模式：
 3. **快捷键**：`Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）
 
 CSV 编辑器功能：
-- **虚拟滚动** — 流畅处理十万行级别数据
-- **单元格编辑** — 双击或按 Enter/F2 进入编辑
-- **行列操作** — 右键菜单插入/删除行列
-- **复制粘贴** — 支持与 Excel 互通的 TSV 格式
-- **撤销重做** — `Ctrl+Z` / `Ctrl+Shift+Z`
-- **搜索替换** — `Ctrl+F` 打开搜索面板
-- **列排序** — 点击表头排序（自动检测数字/文本）
-- **列宽调整** — 拖拽表头边界
+
+* **虚拟滚动** — 流畅处理十万行级别数据
+
+* **单元格编辑** — 双击或按 Enter/F2 进入编辑
+
+* **行列操作** — 右键菜单插入/删除行列
+
+* **复制粘贴** — 支持与 Excel 互通的 TSV 格式
+
+* **撤销重做** — `Ctrl+Z` / `Ctrl+Shift+Z`
+
+* **搜索替换** — `Ctrl+F` 打开搜索面板
+
+* **列排序** — 点击表头排序（自动检测数字/文本）
+
+* **列宽调整** — 拖拽表头边界
 
 ***
 
@@ -148,7 +156,7 @@ console.log('Shiki 高亮，支持 github-light / github-dark 双主题');
 行间公式：
 
 $$
-\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+\int\_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
 $$
 
 ### Mermaid 图表
@@ -175,15 +183,15 @@ graph TD
 
 ## 快捷键速查
 
-| 操作 | Windows/Linux | macOS |
-|------|---------------|-------|
-| Markdown 预览 | `Ctrl+Shift+V` | `Cmd+Shift+V` |
+| 操作            | Windows/Linux                  | macOS         |
+| ------------- | ------------------------------ | ------------- |
+| Markdown 预览   | `Ctrl+Shift+V`                 | `Cmd+Shift+V` |
 | Excalidraw 预览 | `Ctrl+Shift+V`（.excalidraw 文件） | `Cmd+Shift+V` |
-| CSV 预览 | `Ctrl+Shift+V`（.csv 文件） | `Cmd+Shift+V` |
-| 切换模式 | `Ctrl+Shift+E` | `Cmd+Shift+E` |
-| CSV 搜索 | `Ctrl+F` | `Cmd+F` |
-| CSV 撤销 | `Ctrl+Z` | `Cmd+Z` |
-| CSV 重做 | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
+| CSV 预览        | `Ctrl+Shift+V`（.csv 文件）        | `Cmd+Shift+V` |
+| 切换模式          | `Ctrl+Shift+E`                 | `Cmd+Shift+E` |
+| CSV 搜索        | `Ctrl+F`                       | `Cmd+F`       |
+| CSV 撤销        | `Ctrl+Z`                       | `Cmd+Z`       |
+| CSV 重做        | `Ctrl+Shift+Z`                 | `Cmd+Shift+Z` |
 
 ***
 

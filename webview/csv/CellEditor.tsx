@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import type { CellPosition, CsvAction } from './types';
 
 interface CellEditorProps {
@@ -23,6 +23,15 @@ export function CellEditor({ cell, sourceRow, value, width, height, left, top, d
       inputRef.current?.select();
     }, 0);
   }, [value, cell.row, cell.col]);
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = `${height}px`;
+    if (el.scrollHeight > height) {
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [text, height]);
 
   const commit = useCallback(() => {
     if (text !== value) {
@@ -52,7 +61,7 @@ export function CellEditor({ cell, sourceRow, value, width, height, left, top, d
         position: 'absolute',
         left,
         top,
-        width: Math.max(width, 100),
+        width,
         minHeight: height,
         zIndex: 100,
       }}

@@ -12,6 +12,7 @@ interface CsvViewerProps {
 export function CsvViewer({ content }: CsvViewerProps) {
   const { state, dispatch, initFromContent, serialize, sortedRows, sortedToSourceMap, canUndo, canRedo } = useCsvStore(content);
   const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastContentRef = useRef(content);
   const isExternalUpdate = useRef(false);
@@ -49,12 +50,36 @@ export function CsvViewer({ content }: CsvViewerProps) {
     };
   }, [state.rows, state.headers, serialize]);
 
+  const openSearch = useCallback(() => {
+    setShowSearch(true);
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    dispatch({ type: 'SET_SEARCH', search: { query: '', matches: [], currentMatchIndex: -1 } });
+  }, [dispatch]);
+
   const toggleSearch = useCallback(() => {
-    setShowSearch(v => !v);
     if (showSearch) {
-      dispatch({ type: 'SET_SEARCH', search: { query: '', matches: [], currentMatchIndex: -1 } });
+      closeSearch();
+    } else {
+      openSearch();
     }
-  }, [showSearch, dispatch]);
+  }, [showSearch, openSearch, closeSearch]);
+
+  // Cmd+F / Ctrl+F (document 级别，确保在任何焦点状态下都能工作)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        openSearch();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [openSearch]);
 
   if (!state.headers.length) {
     return (
@@ -75,6 +100,8 @@ export function CsvViewer({ content }: CsvViewerProps) {
         canRedo={canRedo}
         showSearch={showSearch}
         onToggleSearch={toggleSearch}
+        onCloseSearch={closeSearch}
+        searchInputRef={searchInputRef}
       />
       <VirtualGrid
         state={state}
@@ -83,7 +110,6 @@ export function CsvViewer({ content }: CsvViewerProps) {
         dispatch={dispatch}
         canUndo={canUndo}
         canRedo={canRedo}
-        onSearchToggle={toggleSearch}
       />
       <ContextMenu menu={state.contextMenu} sortedToSourceMap={sortedToSourceMap} dispatch={dispatch} />
     </div>

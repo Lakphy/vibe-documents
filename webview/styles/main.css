@@ -688,15 +688,47 @@
   outline-offset: -2px;
 }
 
-/* ---- 单元格编辑器 ---- */
+/* ---- 单元格编辑器（原位悬浮覆盖） ---- */
 .csv-cell-editor {
-  @apply px-2 py-1 text-xs outline-none resize-none;
+  @apply px-2 outline-none resize-none;
   background: var(--color-vsc-bg);
   color: var(--color-vsc-fg);
   border: 2px solid var(--color-vsc-link);
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  line-height: 24px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- 拖拽指示器 ---- */
+.csv-drag-indicator-row {
+  background: var(--color-vsc-link);
+  pointer-events: none;
+  border-radius: 1px;
+  box-shadow: 0 0 4px color-mix(in srgb, var(--color-vsc-link) 50%, transparent);
+}
+
+.csv-drag-indicator-col {
+  background: var(--color-vsc-link);
+  pointer-events: none;
+  border-radius: 1px;
+  box-shadow: 0 0 4px color-mix(in srgb, var(--color-vsc-link) 50%, transparent);
+}
+
+/* ---- 可拖拽行号 ---- */
+.csv-row-number--draggable {
+  cursor: grab;
+}
+
+.csv-row-number--draggable:hover {
+  background: var(--color-cursor-bg-quaternary);
+  color: var(--color-cursor-text-secondary);
+}
+
+/* ---- 列头拖拽 ---- */
+.csv-header-cell-content {
+  cursor: grab;
 }
 
 /* ---- 右键菜单 ---- */
@@ -722,6 +754,162 @@
   @apply my-1 mx-2;
   height: 1px;
   background: var(--color-cursor-stroke-tertiary);
+}
+
+/* ==========================================================================
+   搜索组件 — VS Code 风格内嵌搜索栏
+   ========================================================================== */
+
+/* ---- 搜索栏容器 ---- */
+.vd-search-widget {
+  @apply sticky top-[41px] z-[100] flex justify-end pointer-events-none;
+}
+
+.vd-search-widget-inner {
+  @apply flex gap-1 items-start p-1.5 rounded-bl-lg pointer-events-auto;
+  background: var(--color-cursor-bg-elevated, var(--color-vsc-bg));
+  border: 1px solid var(--color-cursor-stroke-secondary);
+  border-top: none;
+  border-right: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: vd-search-slide-in 0.15s ease-out;
+}
+
+@keyframes vd-search-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- 展开/折叠替换行的切换按钮 ---- */
+.vd-search-toggle {
+  @apply flex items-center justify-center w-5 h-5 mt-[3px] rounded-sm cursor-pointer border-none;
+  background: transparent;
+  color: var(--color-cursor-text-tertiary);
+  transition: transform 0.15s, color 0.1s;
+}
+.vd-search-toggle:hover {
+  color: var(--color-cursor-text-primary);
+}
+.vd-search-toggle--active {
+  transform: rotate(90deg);
+  color: var(--color-cursor-text-primary);
+}
+
+/* ---- 行容器 ---- */
+.vd-search-rows {
+  @apply flex flex-col gap-1;
+}
+
+.vd-search-row {
+  @apply flex items-center gap-1;
+}
+
+/* ---- 输入框包装 ---- */
+.vd-search-input-wrap {
+  @apply flex items-center rounded-sm overflow-hidden;
+  background: var(--color-cursor-bg-tertiary);
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+  transition: border-color 0.1s;
+}
+
+.vd-search-input-wrap:focus-within {
+  border-color: var(--color-vsc-link);
+}
+
+.vd-search-input {
+  @apply px-2 py-1 text-xs outline-none border-none min-w-[180px];
+  background: transparent;
+  color: var(--color-vsc-fg);
+  font-family: inherit;
+}
+
+.vd-search-input::placeholder {
+  color: var(--color-cursor-text-quaternary);
+}
+
+/* ---- 搜索选项按钮（输入框内） ---- */
+.vd-search-options {
+  @apply flex items-center gap-px pr-1;
+}
+
+.vd-search-option-btn {
+  @apply flex items-center justify-center w-[22px] h-[22px] rounded-sm cursor-pointer border-none;
+  background: transparent;
+  color: var(--color-cursor-text-quaternary);
+  transition: background 0.1s, color 0.1s;
+}
+
+.vd-search-option-btn:hover {
+  background: var(--color-cursor-bg-secondary);
+  color: var(--color-cursor-text-primary);
+}
+
+.vd-search-option-btn--active {
+  background: var(--color-cursor-bg-primary);
+  color: var(--color-vsc-link);
+}
+
+/* ---- 匹配计数 ---- */
+.vd-search-count {
+  @apply text-[11px] whitespace-nowrap min-w-[50px] text-center;
+  color: var(--color-cursor-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 导航按钮 ---- */
+.vd-search-nav-btn {
+  @apply flex items-center justify-center w-[22px] h-[22px] rounded-sm cursor-pointer border-none;
+  background: transparent;
+  color: var(--color-cursor-text-secondary);
+  transition: background 0.1s, color 0.1s;
+}
+
+.vd-search-nav-btn:hover:not(:disabled) {
+  background: var(--color-cursor-bg-tertiary);
+  color: var(--color-cursor-text-primary);
+}
+
+.vd-search-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ---- 替换行 ---- */
+.vd-search-replace-row .vd-search-input-wrap {
+  min-width: 180px;
+}
+
+/* ==========================================================================
+   搜索高亮 — CSS Custom Highlight API（Preview + WYSIWYG）
+   ========================================================================== */
+::highlight(vd-search-match) {
+  background-color: rgba(234, 178, 58, 0.35);
+}
+
+::highlight(vd-search-current) {
+  background-color: rgba(234, 178, 58, 0.65);
+  outline: 2px solid rgba(234, 178, 58, 0.8);
+  border-radius: 1px;
+}
+
+/* ==========================================================================
+   搜索高亮 — CodeMirror Decoration（Source）
+   ========================================================================== */
+.cm-vd-search-match {
+  background-color: rgba(234, 178, 58, 0.35);
+  border-radius: 1px;
+}
+
+.cm-vd-search-current {
+  background-color: rgba(234, 178, 58, 0.65);
+  outline: 2px solid rgba(234, 178, 58, 0.8);
+  border-radius: 1px;
 }
 
 /* ========== Reduced motion ========== */

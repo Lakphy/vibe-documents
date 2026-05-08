@@ -173,6 +173,38 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       return { ...state, rows: newRows };
     }
 
+    case 'MOVE_ROW': {
+      const { from, to } = action;
+      if (from === to) return state;
+      const newRows = [...state.rows];
+      const [moved] = newRows.splice(from, 1);
+      newRows.splice(to, 0, moved);
+      return { ...state, rows: newRows, sort: { columnIndex: -1, direction: null }, editingCell: null };
+    }
+
+    case 'MOVE_COL': {
+      const { from, to } = action;
+      if (from === to) return state;
+      const newHeaders = [...state.headers];
+      const [movedH] = newHeaders.splice(from, 1);
+      newHeaders.splice(to, 0, movedH);
+      const newRows = state.rows.map(row => {
+        const nr = [...row];
+        const [movedC] = nr.splice(from, 1);
+        nr.splice(to, 0, movedC);
+        return nr;
+      });
+      const oldWidths = Array.from(
+        { length: state.headers.length },
+        (_, i) => state.columnWidths[i] || DEFAULT_COL_WIDTH,
+      );
+      const [movedW] = oldWidths.splice(from, 1);
+      oldWidths.splice(to, 0, movedW);
+      const newWidths: Record<number, number> = {};
+      oldWidths.forEach((w, i) => { newWidths[i] = w; });
+      return { ...state, headers: newHeaders, rows: newRows, columnWidths: newWidths, editingCell: null };
+    }
+
     default:
       return state;
   }
@@ -195,7 +227,9 @@ export function useCsvStore(initialContent: string) {
       action.type === 'DELETE_COL' ||
       action.type === 'PASTE_CELLS' ||
       action.type === 'REPLACE_CURRENT' ||
-      action.type === 'REPLACE_ALL'
+      action.type === 'REPLACE_ALL' ||
+      action.type === 'MOVE_ROW' ||
+      action.type === 'MOVE_COL'
     ) {
       historyRef.current.push({ headers: current.headers, rows: current.rows });
     }
