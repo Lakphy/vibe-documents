@@ -122,7 +122,7 @@ const requiredFiles = [
   'tsconfig.json', 'webpack.config.js', '.gitignore', '.vscodeignore',
   'src/extension.ts', 'src/previewProvider.ts', 'src/utils.ts',
   'webview/App.tsx', 'webview/index.tsx', 'webview/hooks.tsx',
-  'webview/Toolbar.tsx', 'webview/MilkdownEditor.tsx', 'webview/SourceEditor.tsx',
+  'webview/Toolbar.tsx', 'webview/MilkdownEditor.tsx',
   'webview/styles/theme-bridge.css', 'webview/styles/cursor-markdown.css',
   'webview/styles/streamdown-controls.css', 'webview/styles/toolbar.css',
   'webview/styles/milkdown-overrides.css',
@@ -163,10 +163,10 @@ const requiredFiles = [
 
 | 测试用例 | 验证 |
 |----------|------|
-| 渲染三个模式按钮 | 预览、编辑、源码按钮存在 |
+| 渲染两个模式按钮 | 预览、编辑按钮存在 |
 | 当前模式有 active 样式 | CSS 类名正确 |
 | 点击触发 onModeChange | 回调参数正确 |
-| 每个模式都能高亮 | 三种模式的 active 状态 |
+| 每个模式都能高亮 | 两种模式的 active 状态 |
 
 ---
 

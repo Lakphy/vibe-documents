@@ -47,6 +47,11 @@ describe('package.json 声明完整性', () => {
       expect(cmd!.title).toBeTruthy();
     });
 
+    it('不声明源码模式相关命令', () => {
+      expect(commands.some(c => /source/i.test(c.command) || /source/i.test(c.title))).toBe(false);
+      expect(commands.some(c => /源码/.test(c.title))).toBe(false);
+    });
+
     it('所有命令都有图标', () => {
       commands.forEach(cmd => {
         expect(cmd).toHaveProperty('icon');
@@ -107,6 +112,10 @@ describe('package.json 声明完整性', () => {
       expect(pkg.dependencies.streamdown).toBeDefined();
     });
 
+    it('不包含 CodeMirror 源码编辑依赖', () => {
+      expect(Object.keys(pkg.dependencies).some(name => name.startsWith('@codemirror/'))).toBe(false);
+    });
+
     it('包含所有 streamdown 插件', () => {
       expect(pkg.dependencies['@streamdown/mermaid']).toBeDefined();
       expect(pkg.dependencies['@streamdown/code']).toBeDefined();
@@ -162,7 +171,6 @@ describe('项目文件完整性', () => {
     'webview/hooks.tsx',
     'webview/Toolbar.tsx',
     'webview/MilkdownEditor.tsx',
-    'webview/SourceEditor.tsx',
     'webview/ExcalidrawBlock.tsx',
     'webview/styles/main.css',
   ];

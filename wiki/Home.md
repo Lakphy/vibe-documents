@@ -10,7 +10,6 @@
 |------|------|
 | **预览模式** | 基于 Streamdown 的只读渲染，完美复刻 Cursor 风格 |
 | **所见即所得模式** | 基于 Milkdown（ProseMirror）的富文本编辑，支持数学公式与 Mermaid 图表 |
-| **源码模式** | 基于 CodeMirror 6 的纯文本编辑，行号、语法高亮一应俱全 |
 | **双向同步** | Webview 编辑实时写回文件，文件变更实时推送到 Webview |
 | **Excalidraw 编辑器** | 直接打开 `.excalidraw` 文件进行手绘风格图形编辑 |
 | **CSV 编辑器** | 高性能虚拟滚动表格，支持编辑、排序、搜索替换、撤销重做 |
@@ -29,7 +28,7 @@
 | [架构设计](./Architecture.md) | 整体架构、进程模型与数据流 |
 | [扩展宿主层](./Extension-Host.md) | Node.js 侧的扩展激活、命令注册与预览面板管理 |
 | [Webview UI 层](./Webview-UI.md) | React 前端的组件树、Hooks 和消息通信 |
-| [编辑器模式](./Editor-Modes.md) | 三种模式的实现细节：Preview / WYSIWYG / Source |
+| [编辑器模式](./Editor-Modes.md) | 两种模式的实现细节：Preview / WYSIWYG |
 | [样式系统](./Styling-System.md) | CSS 变量桥接、Cursor 设计令牌与主题适配 |
 | [构建与开发](./Build-and-Development.md) | Webpack 配置、开发流程与打包发布 |
 | [测试体系](./Testing.md) | Vitest 测试框架、Mock 策略与测试用例 |
@@ -46,9 +45,8 @@
 │  TypeScript       │        │  React 19             │
 │  VS Code API      │◄──────►│  Streamdown           │
 │                   │ 消息   │  Milkdown (ProseMirror)│
-│                   │ 通信   │  CodeMirror 6         │
-└──────────────────┘        │  KaTeX / Mermaid      │
-                             │  Shiki                │
+│                   │ 通信   │  KaTeX / Mermaid      │
+└──────────────────┘        │  Shiki                │
                              └───────────────────────┘
 构建工具: Webpack 5 + ts-loader
 测试框架: Vitest + jsdom + React Testing Library
@@ -71,7 +69,6 @@ vibe-documents/
 │   ├── App.tsx                 # 根组件，按 fileType 路由
 │   ├── Toolbar.tsx             # 模式切换工具栏
 │   ├── MilkdownEditor.tsx      # WYSIWYG 编辑器 (Milkdown)
-│   ├── SourceEditor.tsx        # 源码编辑器 (CodeMirror)
 │   ├── ExcalidrawEditor.tsx    # Excalidraw 全屏编辑器
 │   ├── ExcalidrawBlock.tsx     # Excalidraw 内嵌块渲染
 │   ├── CsvViewer.tsx           # CSV 高性能编辑器入口

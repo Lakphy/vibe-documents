@@ -156,6 +156,7 @@
     border-left: 4px solid var(--color-vsc-quote-border);
     @apply rounded-r-sm my-2 mb-4 py-2 px-3 pl-3;
     color: var(--color-cursor-text-secondary);
+    font-style: normal;
   }
   .vd-typography blockquote p { @apply mb-2; }
   .vd-typography blockquote p:last-child { @apply mb-0; }
@@ -165,8 +166,38 @@
   .vd-typography li { @apply my-0.5 leading-relaxed; }
 
   .vd-typography input[type="checkbox"] {
-    @apply mr-1.5;
+    @apply mr-1.5 align-middle;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--color-cursor-stroke-secondary);
+    border-radius: 3px;
+    background: var(--color-vsc-bg);
     accent-color: var(--color-vsc-link);
+    opacity: 1;
+    position: relative;
+    transform: translateY(-1px);
+    vertical-align: middle;
+  }
+  .vd-typography input[type="checkbox"][disabled] {
+    cursor: default;
+  }
+  .vd-typography input[type="checkbox"][checked],
+  .vd-typography input[type="checkbox"]:checked {
+    background: var(--color-vsc-link);
+    border-color: var(--color-vsc-link);
+  }
+  .vd-typography input[type="checkbox"][checked]::after,
+  .vd-typography input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid var(--color-primary-foreground);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 
   .vd-typography table {
@@ -252,6 +283,10 @@
   .markdown-section input[type="checkbox"] {
     @apply align-middle;
   }
+  .markdown-section li:has(input[type="checkbox"]) > input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin-top: 0.25em;
+  }
 
   /* Tables: wrapped with custom container */
   .markdown-table-container {
@@ -296,8 +331,19 @@
   [data-streamdown="code-block"] {
     @apply rounded-lg overflow-hidden;
   }
+  [data-streamdown="code-block"] > div:has(> [data-streamdown="code-block-actions"]) {
+    top: 0 !important;
+  }
+  [data-streamdown="code-block-actions"] {
+    top: 0;
+    transform: translateY(-2px);
+  }
   [data-streamdown="code-block"] [data-streamdown="code-block-body"] {
     @apply rounded-lg;
+    background: var(--color-vsc-bg) !important;
+  }
+  [data-streamdown="blockquote"] {
+    font-style: normal;
   }
 
   [data-streamdown="link"] {
@@ -313,10 +359,19 @@
     font-size: var(--vscode-editor-font-size, 13px) !important;
   }
   .shiki { background-color: transparent !important; }
+  body.vscode-dark [data-streamdown="code-block-body"] span[style*="--shiki-dark"],
+  body.vscode-high-contrast [data-streamdown="code-block-body"] span[style*="--shiki-dark"] {
+    color: var(--shiki-dark, var(--sdm-c, inherit)) !important;
+    background-color: var(--shiki-dark-bg, var(--sdm-tbg, transparent)) !important;
+  }
 
   /* Shiki dual theme switching */
+  body.vscode-light .shiki .shiki-dark,
+  body:not(.vscode-dark):not(.vscode-high-contrast) .shiki .shiki-dark,
   html.vscode-light .shiki .shiki-dark,
   html:not(.vscode-dark):not(.vscode-high-contrast) .shiki .shiki-dark { @apply hidden; }
+  body.vscode-dark .shiki .shiki-light,
+  body.vscode-high-contrast .shiki .shiki-light,
   html.vscode-dark .shiki .shiki-light,
   html.vscode-high-contrast .shiki .shiki-light { @apply hidden; }
 
@@ -352,6 +407,143 @@
   .markdown-section .mermaid svg {
     @apply max-w-full h-auto;
   }
+}
+
+/* ==========================================================================
+   Mermaid preview block
+   ========================================================================== */
+.mermaid-preview-block {
+  @apply my-4 flex w-full flex-col gap-2 rounded-lg p-2;
+  background: var(--color-vsc-sidebar);
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+}
+
+.mermaid-preview-header {
+  @apply flex h-8 items-center justify-between gap-2;
+  color: var(--color-cursor-text-tertiary);
+}
+
+.mermaid-preview-label {
+  @apply ml-1 font-mono text-xs lowercase;
+}
+
+.mermaid-preview-actions {
+  @apply pointer-events-auto flex shrink-0 items-center gap-2 rounded-md border px-1.5 py-1;
+  background: color-mix(in srgb, var(--color-vsc-sidebar) 80%, transparent);
+  border-color: var(--color-vsc-sidebar);
+  backdrop-filter: blur(8px);
+  transform: none;
+}
+
+.mermaid-preview-actions-layer {
+  @apply pointer-events-none sticky top-2 z-10 -mt-10 flex h-8 items-center justify-end;
+}
+
+.mermaid-preview-action {
+  @apply flex cursor-pointer items-center justify-center rounded border-none p-1 transition-all;
+  background: transparent;
+  color: var(--color-cursor-text-tertiary);
+}
+
+.mermaid-preview-action:hover:not(:disabled) {
+  color: var(--color-vsc-fg);
+}
+
+.mermaid-preview-action--active {
+  color: var(--color-vsc-fg);
+}
+
+.mermaid-preview-action:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.mermaid-preview-surface {
+  @apply relative flex min-h-32 items-center justify-center overflow-hidden rounded-md p-4;
+  background: var(--color-vsc-bg);
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mermaid-preview-surface svg,
+.mermaid-fullscreen-surface svg {
+  @apply max-w-full h-auto;
+}
+
+.mermaid-pan-surface--panning {
+  cursor: grabbing;
+}
+
+.mermaid-pan-zoom-content {
+  @apply flex items-center justify-center;
+  pointer-events: none;
+  transform-origin: center center;
+  transition: transform 80ms ease-out;
+  will-change: transform;
+}
+
+.mermaid-pan-controls {
+  @apply absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-md border p-1;
+  background: color-mix(in srgb, var(--color-vsc-sidebar) 82%, transparent);
+  border-color: var(--color-cursor-stroke-tertiary);
+  backdrop-filter: blur(8px);
+}
+
+.mermaid-pan-control {
+  @apply flex h-6 w-6 cursor-pointer items-center justify-center rounded border-none p-0 transition-all;
+  background: transparent;
+  color: var(--color-cursor-text-tertiary);
+}
+
+.mermaid-pan-control:hover {
+  color: var(--color-vsc-fg);
+  background: var(--color-cursor-bg-tertiary);
+}
+
+.mermaid-preview-source {
+  @apply m-0 overflow-auto rounded-md p-4 text-xs;
+  background: var(--color-vsc-bg);
+  border: 1px solid var(--color-cursor-stroke-tertiary);
+}
+
+.mermaid-preview-source code {
+  @apply block p-0;
+  color: var(--color-vsc-fg);
+  background: transparent !important;
+  font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+  white-space: pre-wrap;
+}
+
+.mermaid-preview-error,
+.mermaid-preview-loading {
+  @apply text-xs;
+  color: var(--color-cursor-text-tertiary);
+}
+
+.mermaid-fullscreen-backdrop {
+  @apply fixed inset-0 z-[1000] flex flex-col;
+  background: var(--color-vsc-bg);
+  color: var(--color-vsc-fg);
+}
+
+.mermaid-fullscreen-toolbar {
+  @apply flex h-11 shrink-0 items-center justify-between border-b px-3;
+  background: var(--color-vsc-sidebar);
+  border-color: var(--color-cursor-stroke-tertiary);
+}
+
+.mermaid-fullscreen-close {
+  @apply p-1.5;
+}
+
+.mermaid-fullscreen-surface {
+  @apply relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-8;
+  background: var(--color-vsc-bg);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 /* ========== Empty state ========== */
@@ -786,21 +978,6 @@
   }
 }
 
-/* ---- 展开/折叠替换行的切换按钮 ---- */
-.vd-search-toggle {
-  @apply flex items-center justify-center w-5 h-5 mt-[3px] rounded-sm cursor-pointer border-none;
-  background: transparent;
-  color: var(--color-cursor-text-tertiary);
-  transition: transform 0.15s, color 0.1s;
-}
-.vd-search-toggle:hover {
-  color: var(--color-cursor-text-primary);
-}
-.vd-search-toggle--active {
-  transform: rotate(90deg);
-  color: var(--color-cursor-text-primary);
-}
-
 /* ---- 行容器 ---- */
 .vd-search-rows {
   @apply flex flex-col gap-1;
@@ -880,11 +1057,6 @@
   cursor: default;
 }
 
-/* ---- 替换行 ---- */
-.vd-search-replace-row .vd-search-input-wrap {
-  min-width: 180px;
-}
-
 /* ==========================================================================
    搜索高亮 — CSS Custom Highlight API（Preview + WYSIWYG）
    ========================================================================== */
@@ -898,24 +1070,15 @@
   border-radius: 1px;
 }
 
-/* ==========================================================================
-   搜索高亮 — CodeMirror Decoration（Source）
-   ========================================================================== */
-.cm-vd-search-match {
-  background-color: rgba(234, 178, 58, 0.35);
-  border-radius: 1px;
-}
-
-.cm-vd-search-current {
-  background-color: rgba(234, 178, 58, 0.65);
-  outline: 2px solid rgba(234, 178, 58, 0.8);
-  border-radius: 1px;
-}
-
 /* ========== Reduced motion ========== */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
     animation: none !important;
   }
+}
+
+.markdown-section [data-streamdown="blockquote"],
+.markdown-section [data-streamdown="blockquote"] * {
+  font-style: normal !important;
 }

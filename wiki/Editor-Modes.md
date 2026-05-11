@@ -1,6 +1,6 @@
 # 编辑器模式
 
-> Vibe Documents 提供三种编辑模式，每种模式使用不同的渲染引擎，针对不同使用场景优化。
+> Vibe Documents 提供两种编辑模式，每种模式使用不同的渲染引擎，针对不同使用场景优化。
 
 ---
 
@@ -10,7 +10,6 @@
 |------|------|--------|----------|
 | **Preview** | Streamdown | 否 | 阅读文档，查看最终效果 |
 | **WYSIWYG** | Milkdown (ProseMirror) | 是 | 所见即所得编辑，非技术用户友好 |
-| **Source** | CodeMirror 6 | 是 | 直接编辑 Markdown 源码，适合熟悉语法的用户 |
 
 ---
 
@@ -163,91 +162,6 @@ isExternalUpdate.current = false;
 
 ---
 
-## Source 模式（源码）
-
-### 渲染引擎
-
-使用 [CodeMirror 6](https://codemirror.net/) 实现纯文本编辑。
-
-### 扩展配置
-
-```typescript
-const state = EditorState.create({
-  doc: content,
-  extensions: [
-    lineNumbers(),              // 行号
-    highlightActiveLine(),      // 当前行高亮
-    highlightActiveLineGutter(), // 行号栏当前行高亮
-    history(),                  // 撤销/重做
-    keymap.of([...defaultKeymap, ...historyKeymap]),  // 快捷键
-    markdown(),                 // Markdown 语法支持
-    theme,                      // 自定义主题
-    updateListener,             // 内容变更监听
-    EditorView.lineWrapping,    // 自动换行
-  ],
-});
-```
-
-### 主题适配
-
-CodeMirror 主题使用 VS Code CSS 变量，确保与宿主编辑器视觉一致：
-
-```typescript
-const theme = EditorView.theme({
-  '&': {
-    backgroundColor: 'var(--vscode-editor-background)',
-    color: 'var(--vscode-editor-foreground)',
-    fontSize: 'var(--vscode-editor-font-size)',
-    fontFamily: 'var(--vscode-editor-font-family)',
-  },
-  '.cm-content': {
-    caretColor: 'var(--vscode-editorCursor-foreground)',
-  },
-  '.cm-gutters': {
-    backgroundColor: 'var(--vscode-editorGutter-background)',
-    color: 'var(--vscode-editorLineNumber-foreground)',
-  },
-  // ... 更多样式映射
-});
-```
-
-### 内容同步机制
-
-#### 编辑 → 回写
-
-通过 `EditorView.updateListener` 监听文档变更：
-
-```typescript
-const updateListener = EditorView.updateListener.of((update) => {
-  if (!update.docChanged) return;
-  if (isExternalUpdate.current) return;
-  const newContent = update.state.doc.toString();
-  if (newContent === lastSentContent.current) return;
-  lastSentContent.current = newContent;
-  getVsCode().postMessage({ type: 'edit', content: newContent });
-});
-```
-
-#### 外部更新 → 编辑器
-
-监听 `message` 事件，通过 `dispatch()` 替换整个文档：
-
-```typescript
-view.dispatch({
-  changes: {
-    from: 0,
-    to: view.state.doc.length,
-    insert: msg.content,
-  },
-});
-```
-
-### 防循环策略
-
-与 WYSIWYG 模式相同的三重保护：`isExternalUpdate` + `lastSentContent` + 内容比对。
-
----
-
 ## 模式切换行为
 
 ### 工具栏切换
@@ -259,12 +173,12 @@ view.dispatch({
 `Cmd+Shift+E` → Extension Host 发送 `toggleMode` 消息 → Webview 循环切换：
 
 ```
-preview → wysiwyg → source → preview → ...
+preview → wysiwyg → preview → ...
 ```
 
 ### 切换时的数据流
 
-模式切换时 React 条件渲染会卸载旧组件、挂载新组件。新组件通过 `content` prop 获取当前最新内容，无需额外的同步操作。
+预览模式始终挂载，WYSIWYG 模式首次访问后保留挂载并通过 `display` 切换显隐。组件通过 `content` prop 和 `update` 消息保持内容同步。
 
 ---
 

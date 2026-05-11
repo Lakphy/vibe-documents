@@ -12,7 +12,6 @@
 | `webview/App.tsx` | 根组件，模式状态管理和模式切换 |
 | `webview/Toolbar.tsx` | 工具栏组件，模式切换按钮 |
 | `webview/MilkdownEditor.tsx` | WYSIWYG 编辑器组件 |
-| `webview/SourceEditor.tsx` | 源码编辑器组件 |
 | `webview/hooks.tsx` | 自定义 Hooks |
 
 ---
@@ -45,8 +44,7 @@ App
 ├── Toolbar (模式切换工具栏)
 └── 条件渲染
     ├── preview → Streamdown
-    ├── wysiwyg → MilkdownEditor
-    └── source  → SourceEditor
+    └── wysiwyg → MilkdownEditor
 ```
 
 ### 状态管理
@@ -72,7 +70,7 @@ const plugins = useMemo(() => ({
 
 支持两种切换方式：
 1. **工具栏点击** — 直接 `setMode()`
-2. **快捷键** — Extension Host 发送 `toggleMode` 消息，循环切换三个模式
+2. **快捷键** — Extension Host 发送 `toggleMode` 消息，循环切换两个模式
 
 ```typescript
 useEffect(() => {
@@ -156,7 +154,7 @@ declare function acquireVsCodeApi(): {
 };
 ```
 
-MilkdownEditor 和 SourceEditor 都使用单例模式缓存此 API：
+MilkdownEditor 使用单例模式缓存此 API：
 
 ```typescript
 let _vscode: ReturnType<typeof acquireVsCodeApi> | undefined;
@@ -183,7 +181,7 @@ Extension Host                    Webview
      │                              │ React 重新渲染
      │                              │
      │                              │ 用户编辑
-     │                              │ Milkdown/CodeMirror 变更监听
+     │                              │ Milkdown 变更监听
      │  postMessage({type:'edit'})  │
      │◄─────────────────────────────│
      │                              │
@@ -195,6 +193,6 @@ Extension Host                    Webview
 
 ## 相关文档
 
-- [编辑器模式](./Editor-Modes.md) — 三种模式的技术实现
+- [编辑器模式](./Editor-Modes.md) — 两种模式的技术实现
 - [样式系统](./Styling-System.md) — CSS 样式层级与主题适配
 - [架构设计](./Architecture.md) — 双进程架构总览

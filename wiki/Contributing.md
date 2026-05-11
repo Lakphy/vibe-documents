@@ -59,7 +59,6 @@ vibe-documents/
 │   ├── App.tsx              # 根组件
 │   ├── Toolbar.tsx          # 工具栏
 │   ├── MilkdownEditor.tsx   # WYSIWYG 编辑器
-│   ├── SourceEditor.tsx     # 源码编辑器
 │   ├── hooks.tsx            # 自定义 Hooks
 │   ├── styles/              # CSS 样式
 │   └── __tests__/           # 组件测试
@@ -98,7 +97,7 @@ vibe-documents/
 |------|------|------|
 | 文件名（组件） | PascalCase | `MilkdownEditor.tsx` |
 | 文件名（工具） | camelCase | `utils.ts` |
-| 组件 | PascalCase | `function SourceEditor()` |
+| 组件 | PascalCase | `function MilkdownEditor()` |
 | Hook | camelCase，`use` 前缀 | `useVsCodeMessages()` |
 | CSS 类 | kebab-case，`vd-` 前缀 | `.vd-toolbar-btn` |
 | CSS 变量 | kebab-case，`--cursor-` 前缀 | `--cursor-text-primary` |
@@ -137,10 +136,9 @@ test/描述        # 测试相关
 
 示例：
 ```
-feat: 添加源码编辑器的语法折叠支持
+feat: 优化预览模式的代码块渲染
 
-使用 CodeMirror 的 foldGutter 插件实现 Markdown 
-标题级别的代码折叠。
+调整 Streamdown 代码块的主题切换和复制按钮样式。
 ```
 
 ---
@@ -154,7 +152,7 @@ feat: 添加源码编辑器的语法折叠支持
 - [ ] 新功能有对应的测试用例
 - [ ] CSS 使用设计令牌而非硬编码值
 - [ ] 两种主题（亮色/暗色）下视觉效果正常
-- [ ] 三种编辑模式的切换功能正常
+- [ ] 两种编辑模式的切换功能正常
 
 ### 测试要求
 
@@ -210,11 +208,11 @@ npm run test:coverage
 
 1. **简单可靠** — 避免 diff 算法的边界情况
 2. **性能可接受** — Markdown 文件通常不会很大
-3. **一致性** — Milkdown 和 CodeMirror 的变更监听都只提供完整内容
+3. **一致性** — Milkdown 的变更监听提供完整内容
 
-### 为什么 Webview 使用三个独立编辑器组件？
+### 为什么 Webview 使用独立编辑器组件？
 
-Preview（Streamdown）、WYSIWYG（Milkdown）、Source（CodeMirror）是三个完全不同的库，各自有独立的初始化和状态管理。使用条件渲染而非 tab 切换，确保每次切换都用最新内容初始化。
+Preview（Streamdown）和 WYSIWYG（Milkdown）是两个完全不同的库，各自有独立的初始化和状态管理。使用条件渲染并保留已访问模式，避免重复初始化编辑器。
 
 ### 为什么使用 CSS 变量而非主题文件？
 

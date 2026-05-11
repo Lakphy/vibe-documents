@@ -25,10 +25,10 @@
 │  │  │ 文件监听        │  │通信│  │  ├────────────────┤  │  │  │
 │  │  │ 编辑同步        │  │    │  │  │  WYSIWYG Mode │  │  │  │
 │  │  └───────┬────────┘  │    │  │  │  (Milkdown)   │  │  │  │
-│  │          │            │    │  │  ├────────────────┤  │  │  │
-│  │  ┌───────▼────────┐  │    │  │  │  Source Mode  │  │  │  │
-│  │  │   utils.ts     │  │    │  │  │  (CodeMirror) │  │  │  │
-│  │  │ HTML 模板       │  │    │  │  └────────────────┘  │  │  │
+│  │          │            │    │  │  └────────────────┘  │  │  │
+│  │  ┌───────▼────────┐  │    │  │                      │  │  │
+│  │  │   utils.ts     │  │    │  │                      │  │  │
+│  │  │ HTML 模板       │  │    │  │                      │  │  │
 │  │  │ nonce 生成      │  │    │  └──────────────────────┘  │  │
 │  │  └────────────────┘  │    │                            │  │
 │  └──────────────────────┘    └────────────────────────────┘  │
@@ -61,7 +61,6 @@
 职责：
 - **内容渲染** — 通过 Streamdown 渲染 Markdown 为 HTML
 - **富文本编辑** — 通过 Milkdown（ProseMirror）提供 WYSIWYG 编辑
-- **源码编辑** — 通过 CodeMirror 6 提供纯文本编辑
 - **主题适配** — 通过 CSS 变量桥接 VS Code 主题
 
 ---
@@ -102,12 +101,7 @@
 ```
 用户在 Webview 编辑
   │
-  ├─ Milkdown: listenerCtx.markdownUpdated()
-  │       │
-  │       ▼
-  │  postMessage({ type: 'edit', content })
-  │
-  └─ CodeMirror: EditorView.updateListener
+  └─ Milkdown: listenerCtx.markdownUpdated()
           │
           ▼
      postMessage({ type: 'edit', content })
@@ -127,7 +121,7 @@
 编辑同步存在潜在的无限循环风险（Webview 编辑 → 文件更新 → 触发变更事件 → 推送回 Webview → 再次触发编辑事件...）。项目通过以下策略避免循环：
 
 1. **`isUpdatingFromWebview` 标志** — Extension Host 侧设置一个布尔标志，在处理 Webview 回写期间阻止 `sendContent()` 重复推送
-2. **`isExternalUpdate` 标志** — Webview 侧在接收外部更新时设置标志，阻止 Milkdown/CodeMirror 的变更监听器触发回写
+2. **`isExternalUpdate` 标志** — Webview 侧在接收外部更新时设置标志，阻止 Milkdown 的变更监听器触发回写
 3. **`lastSentContent` 去重** — Webview 侧缓存上次发送的内容，相同内容不重复发送
 4. **内容比对** — 推送前和接收时都做字符串相等性检查
 5. **定时器保护** — `isUpdatingFromWebview` 通过 `setTimeout(100ms)` 延迟重置，确保异步操作完成
@@ -179,8 +173,7 @@ index.tsx (入口)
         ├─► hooks.tsx (useVsCodeMessages, useMarkdownComponents)
         │     └─► utils.ts (resolveImageSrc)
         ├─► Toolbar.tsx
-        ├─► MilkdownEditor.tsx
-        └─► SourceEditor.tsx
+        └─► MilkdownEditor.tsx
 ```
 
 > `utils.ts` 中的 `resolveImageSrc` 同时被 Extension Host 和 Webview 使用，是唯一的跨进程共享模块。
@@ -191,4 +184,4 @@ index.tsx (入口)
 
 - [扩展宿主层](./Extension-Host.md) — Extension Host 详细实现
 - [Webview UI 层](./Webview-UI.md) — Webview 详细实现
-- [编辑器模式](./Editor-Modes.md) — 三种模式的技术细节
+- [编辑器模式](./Editor-Modes.md) — 两种模式的技术细节

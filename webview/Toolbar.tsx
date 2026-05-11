@@ -1,7 +1,7 @@
-import { Eye, PenLine, Code } from 'lucide-react';
+import { Eye, PenLine } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-export type EditorMode = 'preview' | 'wysiwyg' | 'source';
+export type EditorMode = 'preview' | 'wysiwyg';
 
 interface ToolbarProps {
   mode: EditorMode;
@@ -11,7 +11,6 @@ interface ToolbarProps {
 const MODES: { key: EditorMode; label: string; icon: ReactNode }[] = [
   { key: 'preview', label: '预览', icon: <Eye size={14} /> },
   { key: 'wysiwyg', label: '编辑', icon: <PenLine size={14} /> },
-  { key: 'source', label: '源码', icon: <Code size={14} /> },
 ];
 
 export function Toolbar({ mode, onModeChange }: ToolbarProps) {

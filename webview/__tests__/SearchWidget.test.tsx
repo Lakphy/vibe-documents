@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { createRef } from 'react';
 import { SearchWidget } from '../search/SearchWidget';
 import type { SearchState, SearchActions } from '../search/useSearch';
-import type { EditorMode } from '../Toolbar';
 
 function makeState(overrides: Partial<SearchState> = {}): SearchState {
   return {
@@ -14,7 +13,6 @@ function makeState(overrides: Partial<SearchState> = {}): SearchState {
     useRegex: false,
     matchCount: 0,
     currentIndex: -1,
-    replaceText: '',
     ...overrides,
   };
 }
@@ -29,9 +27,6 @@ function makeActions(overrides: Partial<SearchActions> = {}): SearchActions {
     toggleRegex: vi.fn(),
     findNext: vi.fn(),
     findPrev: vi.fn(),
-    setReplaceText: vi.fn(),
-    replaceCurrent: vi.fn(),
-    replaceAll: vi.fn(),
     ...overrides,
   };
 }
@@ -39,12 +34,11 @@ function makeActions(overrides: Partial<SearchActions> = {}): SearchActions {
 function renderWidget(
   stateOverrides: Partial<SearchState> = {},
   actionsOverrides: Partial<SearchActions> = {},
-  mode: EditorMode = 'preview',
 ) {
   const state = makeState(stateOverrides);
   const actions = makeActions(actionsOverrides);
   const ref = createRef<HTMLInputElement>();
-  return { ...render(<SearchWidget state={state} actions={actions} mode={mode} searchInputRef={ref} />), actions, state };
+  return { ...render(<SearchWidget state={state} actions={actions} searchInputRef={ref} />), actions, state };
 }
 
 describe('SearchWidget', () => {
@@ -141,24 +135,13 @@ describe('SearchWidget', () => {
   });
 
   it('preview 模式不显示替换切换按钮', () => {
-    renderWidget({ isOpen: true }, {}, 'preview');
+    renderWidget({ isOpen: true });
     expect(screen.queryByTitle('展开替换')).toBeNull();
-  });
-
-  it('source 模式显示替换切换按钮', () => {
-    renderWidget({ isOpen: true }, {}, 'source');
-    expect(screen.getByTitle('展开替换')).toBeInTheDocument();
   });
 
   it('wysiwyg 模式不显示替换切换按钮', () => {
-    renderWidget({ isOpen: true }, {}, 'wysiwyg');
+    renderWidget({ isOpen: true });
     expect(screen.queryByTitle('展开替换')).toBeNull();
-  });
-
-  it('点击替换切换后显示替换输入框', () => {
-    renderWidget({ isOpen: true }, {}, 'source');
-    fireEvent.click(screen.getByTitle('展开替换'));
-    expect(screen.getByPlaceholderText('替换')).toBeInTheDocument();
   });
 
   it('Alt+C 调用 toggleCaseSensitive', () => {

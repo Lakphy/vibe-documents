@@ -1,24 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import {
   X, ChevronUp, ChevronDown,
   CaseSensitive, WholeWord, Regex,
-  Replace, ReplaceAll, ChevronRight,
 } from 'lucide-react';
 import type { SearchState, SearchActions } from './useSearch';
-import type { EditorMode } from '../Toolbar';
 
 interface SearchWidgetProps {
   state: SearchState;
   actions: SearchActions;
-  mode: EditorMode;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-export function SearchWidget({ state, actions, mode, searchInputRef }: SearchWidgetProps) {
-  const [showReplace, setShowReplace] = useState(false);
-  const replaceInputRef = useRef<HTMLInputElement>(null);
-  const canReplace = mode === 'source';
-
+export function SearchWidget({ state, actions, searchInputRef }: SearchWidgetProps) {
   useEffect(() => {
     if (state.isOpen) {
       requestAnimationFrame(() => searchInputRef.current?.focus());
@@ -47,16 +40,6 @@ export function SearchWidget({ state, actions, mode, searchInputRef }: SearchWid
     }
   };
 
-  const handleReplaceKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      actions.close();
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      actions.replaceCurrent();
-    }
-  };
-
   if (!state.isOpen) return null;
 
   const matchLabel = state.query
@@ -68,17 +51,6 @@ export function SearchWidget({ state, actions, mode, searchInputRef }: SearchWid
   return (
     <div className="vd-search-widget" role="search" aria-label="搜索">
       <div className="vd-search-widget-inner">
-        {canReplace && (
-          <button
-            className={`vd-search-toggle ${showReplace ? 'vd-search-toggle--active' : ''}`}
-            onClick={() => setShowReplace(v => !v)}
-            title={showReplace ? '收起替换' : '展开替换'}
-            aria-expanded={showReplace}
-          >
-            <ChevronRight size={14} />
-          </button>
-        )}
-
         <div className="vd-search-rows">
           <div className="vd-search-row">
             <div className="vd-search-input-wrap">
@@ -133,30 +105,6 @@ export function SearchWidget({ state, actions, mode, searchInputRef }: SearchWid
               <X size={16} />
             </button>
           </div>
-
-          {canReplace && showReplace && (
-            <div className="vd-search-row vd-search-replace-row">
-              <div className="vd-search-input-wrap">
-                <input
-                  ref={replaceInputRef}
-                  className="vd-search-input"
-                  type="text"
-                  placeholder="替换"
-                  value={state.replaceText}
-                  onChange={e => actions.setReplaceText(e.target.value)}
-                  onKeyDown={handleReplaceKeyDown}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-              </div>
-              <button className="vd-search-nav-btn" onClick={actions.replaceCurrent} title="替换" disabled={state.matchCount === 0}>
-                <Replace size={16} />
-              </button>
-              <button className="vd-search-nav-btn" onClick={actions.replaceAll} title="全部替换" disabled={state.matchCount === 0}>
-                <ReplaceAll size={16} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

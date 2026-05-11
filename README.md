@@ -8,7 +8,6 @@
 |---------|-------------|
 | **Preview Mode** | Read-only rendering based on Streamdown, perfectly replicating the Cursor style |
 | **WYSIWYG Mode** | Rich text editing based on Milkdown (ProseMirror), with math formula and Mermaid support |
-| **Source Mode** | Pure text editing based on CodeMirror 6, with line numbers and syntax highlighting |
 | **Two-way Sync** | Webview edits write back to files in real-time; file changes push to Webview instantly |
 | **Mermaid Diagrams** | Flowcharts, sequence diagrams, Gantt charts, and more |
 | **KaTeX Math** | Inline `$...$` and block `$$...$$` formulas |
@@ -20,18 +19,18 @@
 1. Install the extension from the VS Code Marketplace
 2. Open any Markdown file
 3. Use `Cmd+Shift+V` (macOS) / `Ctrl+Shift+V` (Windows/Linux) to open preview
-4. Use `Cmd+Shift+E` / `Ctrl+Shift+E` to toggle between Preview / WYSIWYG / Source modes
+4. Use `Cmd+Shift+E` / `Ctrl+Shift+E` to toggle between Preview and WYSIWYG modes
 
 ## Commands
 
 - **Vibe: Open Markdown Preview** — Open preview in current editor group
 - **Vibe: Open Markdown Preview to the Side** — Open preview in a side panel
-- **Vibe: Toggle Preview/Edit Mode** — Cycle through Preview → WYSIWYG → Source modes
+- **Vibe: Toggle Preview/Edit Mode** — Cycle through Preview → WYSIWYG modes
 
 ## Tech Stack
 
 - **Extension Host**: TypeScript + VS Code API
-- **Webview**: React 19 + Streamdown + Milkdown (ProseMirror) + CodeMirror 6
+- **Webview**: React 19 + Streamdown + Milkdown (ProseMirror)
 - **Rendering**: KaTeX (math) + Mermaid (diagrams) + Shiki (code highlighting)
 - **Build**: Webpack 5 + ts-loader
 - **Test**: Vitest + jsdom + React Testing Library

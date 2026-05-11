@@ -6,9 +6,8 @@ import type { EditorMode } from '../Toolbar';
 
 function renderSearchHook(mode: EditorMode = 'preview') {
   const containerRef = createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement | null>;
-  const cmViewRef = createRef<any>() as React.RefObject<any>;
   return renderHook(
-    ({ mode: m }) => useSearch(m, containerRef, cmViewRef),
+    ({ mode: m }) => useSearch(m, containerRef),
     { initialProps: { mode } }
   );
 }
@@ -44,11 +43,6 @@ describe('useSearch', () => {
     it('currentIndex 初始为 -1', () => {
       const { result } = renderSearchHook();
       expect(result.current.state.currentIndex).toBe(-1);
-    });
-
-    it('replaceText 初始为空', () => {
-      const { result } = renderSearchHook();
-      expect(result.current.state.replaceText).toBe('');
     });
 
     it('提供 searchInputRef', () => {
@@ -110,14 +104,6 @@ describe('useSearch', () => {
     });
   });
 
-  describe('setReplaceText', () => {
-    it('更新 replaceText 状态', () => {
-      const { result } = renderSearchHook();
-      act(() => result.current.actions.setReplaceText('replacement'));
-      expect(result.current.state.replaceText).toBe('replacement');
-    });
-  });
-
   describe('DOM 搜索（preview 模式）', () => {
     it('在 DOM 容器中搜索并更新 matchCount', () => {
       const container = document.createElement('div');
@@ -128,9 +114,8 @@ describe('useSearch', () => {
       document.body.appendChild(container);
 
       const containerRef = { current: container } as React.RefObject<HTMLDivElement>;
-      const cmViewRef = { current: null } as React.RefObject<any>;
 
-      const { result } = renderHook(() => useSearch('preview', containerRef, cmViewRef));
+      const { result } = renderHook(() => useSearch('preview', containerRef));
 
       act(() => result.current.actions.open());
       act(() => result.current.actions.setQuery('hello'));
@@ -158,21 +143,4 @@ describe('useSearch', () => {
     });
   });
 
-  describe('replace（preview 模式禁止替换）', () => {
-    it('replaceCurrent 在 preview 模式不报错', () => {
-      const { result } = renderSearchHook('preview');
-      act(() => result.current.actions.open());
-      expect(() => {
-        act(() => result.current.actions.replaceCurrent());
-      }).not.toThrow();
-    });
-
-    it('replaceAll 在 preview 模式不报错', () => {
-      const { result } = renderSearchHook('preview');
-      act(() => result.current.actions.open());
-      expect(() => {
-        act(() => result.current.actions.replaceAll());
-      }).not.toThrow();
-    });
-  });
 });

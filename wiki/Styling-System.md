@@ -245,10 +245,6 @@ blockquote {
   margin: 0 auto;
   padding: 0 32px 64px;
 }
-
-.vd-source-container {
-  height: calc(100vh - 44px);  /* 减去工具栏高度 */
-}
 ```
 
 ### ProseMirror 样式

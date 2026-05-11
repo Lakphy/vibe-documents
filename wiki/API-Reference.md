@@ -36,7 +36,7 @@
 
 ### vibeDocuments.toggleMode
 
-循环切换预览模式（Preview → WYSIWYG → Source → Preview）。
+循环切换预览模式（Preview → WYSIWYG → Preview）。
 
 | 属性 | 值 |
 |------|-----|
@@ -126,7 +126,6 @@ Extension Host 和 Webview 之间通过 `postMessage` 进行通信。
 
 触发时机：
 - Milkdown 编辑器内容变更（`markdownUpdated` 回调）
-- CodeMirror 编辑器内容变更（`updateListener`）
 
 ---
 
@@ -135,10 +134,10 @@ Extension Host 和 Webview 之间通过 `postMessage` 进行通信。
 ### EditorMode
 
 ```typescript
-type EditorMode = 'preview' | 'wysiwyg' | 'source';
+type EditorMode = 'preview' | 'wysiwyg';
 ```
 
-三种编辑模式的联合类型。
+两种编辑模式的联合类型。
 
 ### VsCodeMessage
 
@@ -181,16 +180,6 @@ interface MilkdownEditorProps {
   content: string;     // 当前 Markdown 内容
 }
 ```
-
-### SourceEditorProps
-
-```typescript
-interface SourceEditorProps {
-  content: string;     // 当前 Markdown 内容
-}
-```
-
----
 
 ## 核心类
 

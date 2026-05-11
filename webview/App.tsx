@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo, useDeferredValue, useEffect, lazy, Suspense } from 'react';
 import { Streamdown } from 'streamdown';
-import { mermaid } from '@streamdown/mermaid';
 import { createCodePlugin } from '@streamdown/code';
 import { math } from '@streamdown/math';
 import { cjk } from '@streamdown/cjk';
@@ -13,12 +12,14 @@ import { useVsCodeMessages, useMarkdownComponents, useVsCodeTheme } from './hook
 import { Toolbar, type EditorMode } from './Toolbar';
 import { ExcalidrawRenderer } from './ExcalidrawBlock';
 import { subscribe } from './messageBus';
-import type { EditorView } from '@codemirror/view';
 import { useSearch } from './search/useSearch';
 import { SearchWidget } from './search/SearchWidget';
+import { MermaidBlock } from './MermaidBlock';
+import { CODE_HIGHLIGHT_THEMES } from './markdownPreviewConfig';
+import { useCodeBlockSelectAll } from './useCodeBlockSelectAll';
+import type { CustomRendererProps } from 'streamdown';
 
 const MilkdownEditor = lazy(() => import('./MilkdownEditor').then(m => ({ default: m.MilkdownEditor })));
-const SourceEditor = lazy(() => import('./SourceEditor').then(m => ({ default: m.SourceEditor })));
 const ExcalidrawEditor = lazy(() => import('./ExcalidrawEditor').then(m => ({ default: m.ExcalidrawEditor })));
 const CsvViewer = lazy(() => import('./CsvViewer').then(m => ({ default: m.CsvViewer })));
 
@@ -31,7 +32,7 @@ function LoadingFallback() {
 }
 
 const codePlugin = createCodePlugin({
-  themes: ['github-light', 'github-dark'],
+  themes: CODE_HIGHLIGHT_THEMES,
 });
 
 const lucideIcons = {
@@ -57,8 +58,8 @@ export function App() {
   const [, forceUpdate] = useState(0);
 
   const contentContainerRef = useRef<HTMLDivElement>(null);
-  const cmViewRef = useRef<EditorView | null>(null);
-  const { state: searchState, actions: searchActions, searchInputRef } = useSearch(mode, contentContainerRef, cmViewRef);
+  const { state: searchState, actions: searchActions, searchInputRef } = useSearch(mode, contentContainerRef);
+  useCodeBlockSelectAll(contentContainerRef, fileType === 'markdown' && mode === 'preview');
 
   useEffect(() => {
     if (!visitedModes.current.has(mode)) {
@@ -67,7 +68,7 @@ export function App() {
     }
   }, [mode]);
 
-  const MODES: EditorMode[] = ['preview', 'wysiwyg', 'source'];
+  const MODES: EditorMode[] = ['preview', 'wysiwyg'];
   useEffect(() => {
     return subscribe('toggleMode', () => {
       setMode(prev => {
@@ -108,18 +109,28 @@ export function App() {
     },
   }), [isDark]);
 
+  const MermaidRenderer = useMemo(
+    () => function MermaidRenderer(props: CustomRendererProps) {
+      return <MermaidBlock {...props} config={mermaidOptions.config} />;
+    },
+    [mermaidOptions.config],
+  );
+
   const plugins = useMemo(() => ({
-    mermaid,
     code: codePlugin,
     math,
     cjk,
     renderers: [
       {
+        language: 'mermaid',
+        component: MermaidRenderer,
+      },
+      {
         language: 'excalidraw',
         component: ExcalidrawRenderer,
       },
     ],
-  }), []);
+  }), [MermaidRenderer]);
 
   if (fileType === 'excalidraw') {
     return (
@@ -148,7 +159,7 @@ export function App() {
   return (
     <div className="flex flex-col min-h-screen">
       <Toolbar mode={mode} onModeChange={setMode} />
-      <SearchWidget state={searchState} actions={searchActions} mode={mode} searchInputRef={searchInputRef} />
+      <SearchWidget state={searchState} actions={searchActions} searchInputRef={searchInputRef} />
       <div className="flex-1" ref={contentContainerRef}>
         <div style={{ display: mode === 'preview' ? 'block' : 'none' }}>
           <div className="markdown-container-root">
@@ -157,6 +168,7 @@ export function App() {
                 components={components}
                 plugins={plugins}
                 mermaid={mermaidOptions}
+                shikiTheme={CODE_HIGHLIGHT_THEMES}
                 icons={lucideIcons}
               >
                 {content}
@@ -169,15 +181,6 @@ export function App() {
             <Suspense fallback={<LoadingFallback />}>
               <div className="max-w-[900px] mx-auto px-8 pb-16 vd-typography">
                 <MilkdownEditor content={content} />
-              </div>
-            </Suspense>
-          </div>
-        )}
-        {visitedModes.current.has('source') && (
-          <div style={{ display: mode === 'source' ? 'block' : 'none' }}>
-            <Suspense fallback={<LoadingFallback />}>
-              <div className="h-[calc(100vh-44px)]">
-                <SourceEditor content={content} cmViewRef={cmViewRef} />
               </div>
             </Suspense>
           </div>
