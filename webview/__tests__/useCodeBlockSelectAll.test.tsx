@@ -27,6 +27,15 @@ function SelectionHarness() {
       <pre className="mermaid-preview-source" data-testid="mermaid-source">
         <code>{'graph TD;\nA-->B;'}</code>
       </pre>
+      <div contentEditable data-testid="editor">
+        <p>Editable paragraph</p>
+        <pre data-testid="editable-code-block">
+          <code data-markdown-code-content="true">{'function run() {\n  return true;\n}'}</code>
+        </pre>
+        <pre data-testid="textarea-code-block">
+          <textarea data-markdown-code-content="true" defaultValue={'const edit = true;\nconsole.log(edit);'} />
+        </pre>
+      </div>
       <input aria-label="search" defaultValue="select me" />
       <p>After text</p>
     </div>
@@ -50,7 +59,7 @@ describe('useCodeBlockSelectAll', () => {
     expect(window.getSelection()?.toString()).toBe('const value = 1;\nconsole.log(value);');
   });
 
-  it('lets the second Cmd+A fall through so the browser can select the whole page', () => {
+  it('selects the whole container on the second Cmd+A', () => {
     const { getByTestId } = render(<SelectionHarness />);
     const block = getByTestId('code-block');
 
@@ -58,7 +67,9 @@ describe('useCodeBlockSelectAll', () => {
     dispatchSelectAll();
     const secondEvent = dispatchSelectAll();
 
-    expect(secondEvent.defaultPrevented).toBe(false);
+    expect(secondEvent.defaultPrevented).toBe(true);
+    expect(window.getSelection()?.toString()).toContain('Before text');
+    expect(window.getSelection()?.toString()).toContain('After text');
   });
 
   it('uses the same select-all behavior for Mermaid source blocks', () => {
@@ -81,5 +92,70 @@ describe('useCodeBlockSelectAll', () => {
 
     expect(event.defaultPrevented).toBe(false);
     expect(window.getSelection()?.toString()).toBe('');
+  });
+
+  it('selects editable code block contents on the first Cmd+A', () => {
+    const { getByTestId } = render(<SelectionHarness />);
+    const block = getByTestId('editable-code-block');
+    const code = block.querySelector('code')!;
+
+    const range = document.createRange();
+    range.setStart(code.firstChild!, 3);
+    range.collapse(true);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+
+    fireEvent.pointerDown(code);
+    const event = dispatchSelectAll(getByTestId('editor'));
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(window.getSelection()?.toString()).toBe('function run() {\n  return true;\n}');
+  });
+
+  it('selects textarea-backed editable code block contents on the first Cmd+A', () => {
+    const { getByTestId } = render(<SelectionHarness />);
+    const block = getByTestId('textarea-code-block');
+    const textarea = block.querySelector('textarea')!;
+
+    textarea.focus();
+    textarea.setSelectionRange(3, 3);
+    fireEvent.pointerDown(textarea);
+    const event = dispatchSelectAll(textarea);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(textarea.selectionStart).toBe(0);
+    expect(textarea.selectionEnd).toBe(textarea.value.length);
+  });
+
+  it('selects the whole container on the second Cmd+A from a textarea-backed code block', () => {
+    const { getByTestId } = render(<SelectionHarness />);
+    const block = getByTestId('textarea-code-block');
+    const textarea = block.querySelector('textarea')!;
+
+    textarea.focus();
+    fireEvent.pointerDown(textarea);
+    dispatchSelectAll(textarea);
+    const secondEvent = dispatchSelectAll(textarea);
+
+    expect(secondEvent.defaultPrevented).toBe(true);
+    expect(window.getSelection()?.toString()).toContain('Before text');
+    expect(window.getSelection()?.toString()).toContain('After text');
+  });
+
+  it('does not intercept Cmd+A in editable text outside code blocks', () => {
+    const { getByTestId } = render(<SelectionHarness />);
+    const editor = getByTestId('editor');
+    const paragraph = editor.querySelector('p')!;
+
+    const range = document.createRange();
+    range.setStart(paragraph.firstChild!, 3);
+    range.collapse(true);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+
+    fireEvent.pointerDown(paragraph);
+    const event = dispatchSelectAll(editor);
+
+    expect(event.defaultPrevented).toBe(false);
   });
 });

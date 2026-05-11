@@ -130,7 +130,10 @@ export class PreviewProvider {
       } else if (msg.type === 'edit' && typeof msg.content === 'string') {
         const doc = await vscode.workspace.openTextDocument(uri);
         const currentText = doc.getText();
-        if (currentText === msg.content) return;
+        if (currentText === msg.content) {
+          lastSentContent = msg.content;
+          return;
+        }
 
         isUpdatingFromWebview = true;
         try {
@@ -149,7 +152,10 @@ export class PreviewProvider {
               edit.insert(uri, doc.positionAt(offset), text);
             }
           }
-          await vscode.workspace.applyEdit(edit);
+          const applied = await vscode.workspace.applyEdit(edit);
+          if (applied) {
+            lastSentContent = msg.content;
+          }
         } finally {
           setTimeout(() => {
             isUpdatingFromWebview = false;

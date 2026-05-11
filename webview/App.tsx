@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo, useDeferredValue, useEffect, lazy, Suspense } from 'react';
 import { Streamdown } from 'streamdown';
-import { createCodePlugin } from '@streamdown/code';
 import { math } from '@streamdown/math';
 import { cjk } from '@streamdown/cjk';
 import {
@@ -17,6 +16,7 @@ import { SearchWidget } from './search/SearchWidget';
 import { MermaidBlock } from './MermaidBlock';
 import { CODE_HIGHLIGHT_THEMES } from './markdownPreviewConfig';
 import { useCodeBlockSelectAll } from './useCodeBlockSelectAll';
+import { codePlugin } from './codeHighlighter';
 import type { CustomRendererProps } from 'streamdown';
 
 const MilkdownEditor = lazy(() => import('./MilkdownEditor').then(m => ({ default: m.MilkdownEditor })));
@@ -30,10 +30,6 @@ function LoadingFallback() {
     </div>
   );
 }
-
-const codePlugin = createCodePlugin({
-  themes: CODE_HIGHLIGHT_THEMES,
-});
 
 const lucideIcons = {
   CheckIcon: Check,
@@ -59,7 +55,7 @@ export function App() {
 
   const contentContainerRef = useRef<HTMLDivElement>(null);
   const { state: searchState, actions: searchActions, searchInputRef } = useSearch(mode, contentContainerRef);
-  useCodeBlockSelectAll(contentContainerRef, fileType === 'markdown' && mode === 'preview');
+  useCodeBlockSelectAll(contentContainerRef, fileType === 'markdown' && (mode === 'preview' || mode === 'wysiwyg'));
 
   useEffect(() => {
     if (!visitedModes.current.has(mode)) {
@@ -179,8 +175,10 @@ export function App() {
         {visitedModes.current.has('wysiwyg') && (
           <div style={{ display: mode === 'wysiwyg' ? 'block' : 'none' }}>
             <Suspense fallback={<LoadingFallback />}>
-              <div className="max-w-[900px] mx-auto px-8 pb-16 vd-typography">
-                <MilkdownEditor content={content} />
+              <div className="markdown-container-root markdown-edit-container">
+                <div className="markdown-section markdown-edit-section vd-typography">
+                  <MilkdownEditor content={content} baseUri={baseUri} />
+                </div>
               </div>
             </Suspense>
           </div>

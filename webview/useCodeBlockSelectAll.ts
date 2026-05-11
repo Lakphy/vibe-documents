@@ -65,16 +65,30 @@ function findCodeBlockFromSelection(container: HTMLElement) {
 }
 
 function getSelectableCodeElement(block: HTMLElement) {
-  return block.querySelector('code') ?? block;
+  return block.querySelector('[data-markdown-code-content="true"]') ?? block.querySelector('code') ?? block;
+}
+
+function isTextControl(element: Element): element is HTMLInputElement | HTMLTextAreaElement {
+  if (element instanceof HTMLTextAreaElement) return true;
+  return element instanceof HTMLInputElement && !NON_TEXT_INPUT_TYPES.has(element.type);
+}
+
+function isFullTextControlSelection(element: HTMLInputElement | HTMLTextAreaElement) {
+  return element.selectionStart === 0 && element.selectionEnd === element.value.length;
 }
 
 function isFullCodeBlockSelection(block: HTMLElement) {
+  const selectable = getSelectableCodeElement(block);
+  if (isTextControl(selectable)) {
+    return isFullTextControlSelection(selectable);
+  }
+
   const selection = window.getSelection();
   if (!selection || selection.rangeCount !== 1) return false;
 
   const selectedRange = selection.getRangeAt(0);
   const targetRange = document.createRange();
-  targetRange.selectNodeContents(getSelectableCodeElement(block));
+  targetRange.selectNodeContents(selectable);
 
   return (
     selectedRange.compareBoundaryPoints(Range.START_TO_START, targetRange) === 0 &&
@@ -83,11 +97,34 @@ function isFullCodeBlockSelection(block: HTMLElement) {
 }
 
 function selectCodeBlockContents(block: HTMLElement) {
+  const selectable = getSelectableCodeElement(block);
+  if (isTextControl(selectable)) {
+    selectable.focus();
+    selectable.select();
+    return true;
+  }
+
   const selection = window.getSelection();
   if (!selection) return false;
 
   const range = document.createRange();
-  range.selectNodeContents(getSelectableCodeElement(block));
+  range.selectNodeContents(selectable);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+}
+
+function selectContainerContents(container: HTMLElement) {
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+
+  const selection = window.getSelection();
+  if (!selection) return false;
+
+  const range = document.createRange();
+  range.selectNodeContents(container);
   selection.removeAllRanges();
   selection.addRange(range);
   return true;
@@ -104,13 +141,20 @@ export function useCodeBlockSelectAll(containerRef: RefObject<HTMLElement | null
 
     const updateFocusedCodeBlock = (target: EventTarget | null) => {
       const container = getContainer();
-      if (!container || isEditableTarget(target)) {
+      if (!container) {
         focusedCodeBlockRef.current = null;
         selectedByShortcutRef.current = null;
         return;
       }
 
-      focusedCodeBlockRef.current = findCodeBlock(getElementFromTarget(target), container);
+      const targetBlock = findCodeBlock(getElementFromTarget(target), container);
+      if (isEditableTarget(target) && !targetBlock) {
+        focusedCodeBlockRef.current = null;
+        selectedByShortcutRef.current = null;
+        return;
+      }
+
+      focusedCodeBlockRef.current = targetBlock;
       selectedByShortcutRef.current = null;
     };
 
@@ -122,17 +166,21 @@ export function useCodeBlockSelectAll(containerRef: RefObject<HTMLElement | null
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || !isSelectAllShortcut(event) || isEditableTarget(event.target)) return;
+      if (event.defaultPrevented || !isSelectAllShortcut(event)) return;
 
       const container = getContainer();
       if (!container) return;
 
       const codeBlock = findCodeBlockFromSelection(container) ?? focusedCodeBlockRef.current;
+      if (isEditableTarget(event.target) && !codeBlock) return;
       if (!codeBlock || !container.contains(codeBlock)) return;
 
       if (selectedByShortcutRef.current === codeBlock && isFullCodeBlockSelection(codeBlock)) {
+        event.preventDefault();
+        event.stopPropagation();
         focusedCodeBlockRef.current = null;
         selectedByShortcutRef.current = null;
+        selectContainerContents(container);
         return;
       }
 

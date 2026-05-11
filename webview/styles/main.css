@@ -299,6 +299,10 @@
   .markdown-table td {
     @apply whitespace-nowrap;
   }
+  .markdown-table th > p,
+  .markdown-table td > p {
+    @apply mb-0;
+  }
   .markdown-table tr:hover td {
     background-color: var(--color-cursor-bg-quaternary);
   }
@@ -553,93 +557,209 @@
 }
 
 /* ==========================================================================
-   Milkdown / WYSIWYG 编辑器 — ProseMirror 特有样式
+   编辑模式 — 复用 Preview 的 markdown-section / vd-typography 视觉系统
    ========================================================================== */
 @layer base {
-  .ProseMirror {
-    @apply outline-none py-4 leading-relaxed;
+  .markdown-edit-container {
     color: var(--color-vsc-fg);
-    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, sans-serif);
-    font-size: var(--vscode-font-size, 13px);
-  }
-  .ProseMirror:focus { @apply outline-none; }
-
-  .ProseMirror a { @apply cursor-pointer; }
-
-  .ProseMirror table { @apply overflow-hidden rounded-lg; }
-
-  .ProseMirror li[data-checked] {
-    list-style-type: none;
-    @apply relative;
-  }
-  .ProseMirror li[data-checked]::before { @apply absolute -left-5; }
-
-  .ProseMirror .selectedCell {
-    background-color: var(--color-vsc-selection);
   }
 
-  .ProseMirror ::selection { background-color: var(--color-vsc-selection); }
-  .ProseMirror .is-empty::before {
-    content: attr(data-placeholder);
-    color: var(--color-cursor-text-quaternary);
-    @apply pointer-events-none absolute;
-  }
-
-  .milkdown {
+  .markdown-edit-section .milkdown {
     --color-surface: var(--color-vsc-bg) !important;
     --color-primary: var(--color-vsc-link) !important;
     --color-secondary: var(--color-cursor-text-secondary) !important;
     --color-solid: var(--color-vsc-fg) !important;
     --color-line: var(--color-cursor-stroke-tertiary) !important;
     --color-background: var(--color-vsc-bg) !important;
-    @apply bg-transparent shadow-none border-none;
-    color: var(--color-vsc-fg) !important;
+    @apply m-0 border-none bg-transparent p-0 shadow-none;
+    color: inherit !important;
+    font: inherit;
   }
-  .milkdown .editor { @apply p-0; }
+
+  .markdown-edit-section .milkdown .editor {
+    @apply m-0 p-0;
+  }
+
+  .markdown-edit-section .ProseMirror {
+    @apply m-0 min-h-[160px] space-y-4 whitespace-normal p-0 outline-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    caret-color: var(--color-vsc-cursor);
+  }
+
+  .markdown-edit-section .ProseMirror:focus {
+    @apply outline-none;
+  }
+
+  .markdown-edit-section .ProseMirror > *:first-child {
+    @apply mt-0;
+  }
+
+  .markdown-edit-section .ProseMirror > *:last-child {
+    @apply mb-0;
+  }
+
+  .markdown-edit-section .ProseMirror a {
+    @apply cursor-pointer transition-colors duration-100;
+  }
+
+  .markdown-edit-section .ProseMirror a:hover {
+    color: var(--color-vsc-link-active);
+  }
+
+  .markdown-edit-section .ProseMirror code:not(pre code) {
+    @apply transition-all duration-100;
+  }
+
+  .markdown-edit-section .ProseMirror .selectedCell {
+    background-color: var(--color-vsc-selection);
+  }
+
+  .markdown-edit-section .ProseMirror .ProseMirror-selectednode {
+    outline: 2px solid var(--color-vsc-link);
+    outline-offset: 2px;
+  }
+
+  .markdown-edit-section .ProseMirror ::selection {
+    background-color: var(--color-vsc-selection);
+  }
+
+  .markdown-edit-section .ProseMirror .is-empty {
+    @apply relative;
+  }
+
+  .markdown-edit-section .ProseMirror .is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--color-cursor-text-quaternary);
+    @apply pointer-events-none absolute;
+  }
+
+  .markdown-edit-section .ProseMirror li[data-item-type="task"],
+  .markdown-edit-section .ProseMirror li[data-checked] {
+    list-style-type: none;
+    @apply relative -ml-5;
+  }
+
+  .markdown-edit-section .ProseMirror li[data-item-type="task"] > p:first-child,
+  .markdown-edit-section .ProseMirror li[data-checked] > p:first-child {
+    display: inline;
+  }
+
+  .markdown-edit-section .ProseMirror li[data-item-type="task"]::before,
+  .markdown-edit-section .ProseMirror li[data-checked]::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 0.375rem;
+    border: 1px solid var(--color-cursor-stroke-secondary);
+    border-radius: 3px;
+    background: var(--color-vsc-bg);
+    transform: translateY(2px);
+  }
+
+  .markdown-edit-section .ProseMirror li[data-item-type="task"][data-checked="true"]::before,
+  .markdown-edit-section .ProseMirror li[data-checked="true"]::before {
+    background: var(--color-vsc-link);
+    border-color: var(--color-vsc-link);
+  }
+
+  .markdown-edit-section .ProseMirror li[data-item-type="task"][data-checked="true"]::after,
+  .markdown-edit-section .ProseMirror li[data-checked="true"]::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0.62em;
+    width: 4px;
+    height: 8px;
+    border: solid var(--color-primary-foreground);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .markdown-edit-code-block {
+    @apply my-4 flex w-full flex-col gap-2 overflow-hidden rounded-xl border p-2;
+    background: var(--color-vsc-sidebar);
+    border-color: var(--color-cursor-stroke-tertiary);
+  }
+
+  .markdown-edit-code-block-header {
+    @apply flex h-8 items-center text-xs;
+    color: var(--color-cursor-text-tertiary);
+  }
+
+  .markdown-edit-code-block-label {
+    @apply ml-1 font-mono lowercase;
+  }
+
+  .markdown-edit-code-block-body {
+    @apply relative overflow-x-auto rounded-md border p-4 text-sm;
+    background: var(--color-vsc-bg);
+    border-color: var(--color-cursor-stroke-tertiary);
+  }
+
+  .markdown-edit-code-editor {
+    @apply relative m-0 overflow-hidden p-0;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: var(--color-vsc-fg);
+    font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
+    font-size: var(--vscode-editor-font-size, 13px);
+    line-height: normal;
+    tab-size: 4;
+    white-space: pre;
+  }
+
+  .markdown-edit-code-highlight-code {
+    @apply block p-0 rounded-none text-[0.9em] leading-normal;
+    background: none !important;
+    color: var(--color-vsc-fg);
+    font: inherit;
+    min-width: 100%;
+    pointer-events: none;
+    tab-size: 4;
+    white-space: pre;
+  }
+
+  .markdown-edit-code-textarea {
+    @apply absolute inset-0 block w-full resize-none rounded-none border-0 p-0 text-[0.9em] leading-normal;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    caret-color: var(--color-vsc-cursor);
+    font: inherit;
+    outline: none !important;
+    overflow: auto;
+    tab-size: 4;
+    white-space: pre;
+  }
+
+  .markdown-edit-code-textarea::selection {
+    color: var(--color-vsc-fg);
+    background: var(--color-vsc-selection);
+  }
 }
 
 /* ==========================================================================
-   Mermaid 分屏视图（编辑模式：左代码 / 右预览）
+   Mermaid 编辑视图 — 使用 Preview Mermaid block 的同款视觉结构
    ========================================================================== */
-.mermaid-split-container {
-  @apply flex gap-0 my-2 mb-4 rounded-lg overflow-hidden;
-  border: 1px solid var(--color-cursor-stroke-tertiary);
-  min-height: 160px;
+.markdown-edit-mermaid-block {
+  @apply my-4;
 }
-.mermaid-split-container .mermaid-code-pane {
-  @apply flex-1 min-w-0 overflow-auto;
-  background-color: var(--color-vsc-code-bg);
-  border-right: 1px solid var(--color-cursor-stroke-tertiary);
+
+.markdown-edit-mermaid-source {
+  min-height: 96px;
 }
-.mermaid-split-container .mermaid-code-pane pre {
-  @apply p-3 m-0 min-h-full;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
+
+.markdown-edit-mermaid-source .markdown-edit-code-highlight-code,
+.markdown-edit-mermaid-source .markdown-edit-code-textarea {
+  font-size: 1em;
 }
-.mermaid-split-container .mermaid-code-pane pre code {
-  @apply block text-[0.85em] leading-normal;
-  background: none !important;
-  color: var(--color-vsc-fg);
-  font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.mermaid-split-container .mermaid-preview-pane {
-  @apply flex-1 min-w-0 flex items-center justify-center p-4 overflow-auto;
-  background-color: var(--color-vsc-bg);
-}
-.mermaid-split-container .mermaid-preview-pane svg {
-  @apply max-w-full h-auto;
-}
-.mermaid-split-container .mermaid-preview-pane .mermaid-error {
-  color: var(--color-cursor-text-tertiary);
-  @apply text-xs italic;
-}
-.mermaid-split-container .mermaid-label {
-  @apply text-[10px] px-2 py-0.5 select-none;
-  color: var(--color-cursor-text-quaternary);
-  background: var(--color-cursor-bg-quaternary);
+
+.markdown-edit-mermaid-preview-surface {
+  cursor: default;
 }
 
 /* ==========================================================================

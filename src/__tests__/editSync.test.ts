@@ -71,6 +71,76 @@ describe('编辑同步（双向通信）', () => {
         );
       });
     });
+
+    it('webview 自己写回的编辑不会再回推成 update', async () => {
+      vi.useFakeTimers();
+      try {
+        const uri = vscode.Uri.file('/test/file.md');
+        let currentText = '# Before';
+
+        vi.mocked(vscode.workspace.openTextDocument).mockImplementation(async () => ({
+          getText: () => currentText,
+          uri,
+          positionAt: (offset: number) => new vscode.Position(0, offset),
+        }) as any);
+
+        provider.showPreview(uri, vscode.ViewColumn.Active);
+
+        const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+        const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+        const documentChangeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+        expect(messageHandler).toBeDefined();
+        expect(documentChangeHandler).toBeDefined();
+
+        panel.webview.postMessage.mockClear();
+        currentText = '# After';
+        await messageHandler({ type: 'edit', content: currentText });
+        documentChangeHandler({ document: { uri } } as any);
+
+        await vi.advanceTimersByTimeAsync(250);
+        await Promise.resolve();
+
+        expect(panel.webview.postMessage).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('applyEdit 后产生的文件变更不会回流重建编辑器', async () => {
+      vi.useFakeTimers();
+      try {
+        const uri = vscode.Uri.file('/test/file.md');
+        let currentText = '# Before';
+        const nextText = '# After';
+
+        vi.mocked(vscode.workspace.openTextDocument).mockImplementation(async () => ({
+          getText: () => currentText,
+          uri,
+          positionAt: (offset: number) => new vscode.Position(0, offset),
+        }) as any);
+
+        provider.showPreview(uri, vscode.ViewColumn.Active);
+
+        const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+        const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+        const documentChangeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+        expect(messageHandler).toBeDefined();
+        expect(documentChangeHandler).toBeDefined();
+
+        panel.webview.postMessage.mockClear();
+        await messageHandler({ type: 'edit', content: nextText });
+        currentText = nextText;
+        documentChangeHandler({ document: { uri } } as any);
+
+        await vi.advanceTimersByTimeAsync(250);
+        await Promise.resolve();
+
+        expect(vscode.workspace.applyEdit).toHaveBeenCalled();
+        expect(panel.webview.postMessage).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('增量 diff 编辑', () => {
