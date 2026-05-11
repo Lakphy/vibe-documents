@@ -165,7 +165,7 @@ export function App() {
                 plugins={plugins}
                 mermaid={mermaidOptions}
                 shikiTheme={CODE_HIGHLIGHT_THEMES}
-                icons={lucideIcons}
+                icons={lucideIcons as any}
               >
                 {content}
               </Streamdown>

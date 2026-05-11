@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => observer.disconnect();
   }, []);
 
-  return <ThemeContext value={isDark}>{children}</ThemeContext>;
+  return <ThemeContext.Provider value={isDark}>{children}</ThemeContext.Provider>;
 }
 
 export function useIsDark(): boolean {

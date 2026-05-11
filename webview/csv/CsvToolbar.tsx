@@ -13,7 +13,7 @@ interface CsvToolbarProps {
   showSearch: boolean;
   onToggleSearch: () => void;
   onCloseSearch: () => void;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
+  searchInputRef: React.RefObject<HTMLInputElement>;
 }
 
 export function CsvToolbar({ state, dispatch, canUndo, canRedo, showSearch, onToggleSearch, onCloseSearch, searchInputRef }: CsvToolbarProps) {

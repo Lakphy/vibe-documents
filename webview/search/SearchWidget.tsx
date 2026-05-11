@@ -8,7 +8,7 @@ import type { SearchState, SearchActions } from './useSearch';
 interface SearchWidgetProps {
   state: SearchState;
   actions: SearchActions;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
+  searchInputRef: React.RefObject<HTMLInputElement>;
 }
 
 export function SearchWidget({ state, actions, searchInputRef }: SearchWidgetProps) {
