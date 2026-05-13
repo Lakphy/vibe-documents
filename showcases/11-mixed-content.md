@@ -2,22 +2,22 @@
 
 本文档模拟真实使用场景，在单个文档中混合使用所有功能，测试它们之间的兼容性和排版效果。
 
----
+***
 
-## 项目概述：构建一个全栈 Web 应用
+## 项目概述：构建一个全栈 Web 应用1
 
-### 技术选型
+### 技术选型     
 
 我们将使用以下技术栈构建应用：
 
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| 前端 | React 19 + TypeScript | UI 组件和状态管理 |
-| 样式 | Tailwind CSS 4 | 原子化 CSS 方案 |
-| 后端 | Node.js + Express | REST API 服务 |
-| 数据库 | PostgreSQL | 关系型数据库 |
-| 缓存 | Redis | 会话和热点数据缓存 |
-| 部署 | Docker + K8s | 容器化部署 |
+| 层级  | 技术                       | 说明          |
+| --- | ------------------------ | ----------- |
+| 前端  | React 19 + TypeScript111 | UI 组件和状态管理  |
+| 样式  | Tailwind CSS 4           | 原子化 CSS 方案  |
+| 后端  | Node.js + Express        | REST API 服务 |
+| 数据库 | PostgreSQL               | 关系型数据库      |
+| 缓存  | Redis                    | 会话和热点数据缓存   |
+| 部署  | Docker + K8s             | 容器化部署       |
 
 ### 系统架构
 
@@ -54,7 +54,7 @@ graph TB
     I --> K
 ```
 
----
+***
 
 ## 用户认证模块
 
@@ -157,12 +157,15 @@ class AuthService {
 
 > **安全提示**：生产环境中请确保：
 >
-> - 使用足够强度的密码哈希（bcrypt rounds >= 12）
-> - JWT 密钥使用随机生成的 256 位密钥
-> - Refresh Token 支持轮换（rotation）
-> - 实现速率限制防止暴力破解
+> * 使用足够强度的密码哈希（bcrypt rounds >= 12）
+>
+> * JWT 密钥使用随机生成的 256 位密钥
+>
+> * Refresh Token 支持轮换（rotation）
+>
+> * 实现速率限制防止暴力破解
 
----
+***
 
 ## 数据库设计
 
@@ -258,7 +261,7 @@ CREATE TABLE orders (
 );
 ```
 
----
+***
 
 ## 性能优化
 
@@ -266,12 +269,12 @@ CREATE TABLE orders (
 
 在选择数据结构时，需要考虑以下时间复杂度：
 
-| 操作 | Array | LinkedList | HashMap | BST |
-|------|-------|-----------|---------|-----|
-| 访问 | $O(1)$ | $O(n)$ | $O(1)$ | $O(\log n)$ |
-| 搜索 | $O(n)$ | $O(n)$ | $O(1)$ | $O(\log n)$ |
-| 插入 | $O(n)$ | $O(1)$ | $O(1)$ | $O(\log n)$ |
-| 删除 | $O(n)$ | $O(1)$ | $O(1)$ | $O(\log n)$ |
+| 操作 | Array  | LinkedList | HashMap | BST         |
+| -- | ------ | ---------- | ------- | ----------- |
+| 访问 | $O(1)$ | $O(n)$     | $O(1)$  | $O(\log n)$ |
+| 搜索 | $O(n)$ | $O(n)$     | $O(1)$  | $O(\log n)$ |
+| 插入 | $O(n)$ | $O(1)$     | $O(1)$  | $O(\log n)$ |
+| 删除 | $O(n)$ | $O(1)$     | $O(1)$  | $O(\log n)$ |
 
 其中哈希表的平均情况为 $O(1)$，最坏情况为 $O(n)$（哈希碰撞）。
 
@@ -288,10 +291,10 @@ $$
 当请求分布满足 Pareto 原则（80/20法则）时，缓存效果最佳：
 
 $$
-P(X > x) = \left(\frac{x_m}{x}\right)^\alpha, \quad x \geq x_m
+P(X > x) = \left(\frac{x\_m}{x}\right)^\alpha, \quad x \geq x\_m
 $$
 
----
+***
 
 ## 项目进度
 
@@ -326,25 +329,37 @@ gantt
 
 ### 任务清单
 
-- [x] **Sprint 1** - 基础设施
-  - [x] 项目脚手架搭建 (`create-turbo`)
-  - [x] GitHub Actions CI/CD
-  - [x] PostgreSQL + Redis Docker Compose
-  - [x] Prisma Schema 设计
-- [x] **Sprint 2** - 核心功能
-  - [x] JWT 认证 + 刷新令牌
-  - [ ] 商品 CRUD + 分页搜索
-  - [ ] 购物车（Redis 存储）
-- [ ] **Sprint 3** - 订单系统
-  - [ ] 订单创建 + 状态机
-  - [ ] Stripe 支付集成
-  - [ ] 邮件通知
-- [ ] **Sprint 4** - 上线准备
-  - [ ] 负载测试（k6）
-  - [ ] OWASP 安全检查
-  - [ ] K8s 部署配置
+* [x] **Sprint 1** - 基础设施
+  * [x] 项目脚手架搭建 (`create-turbo`)
 
----
+  * [x] GitHub Actions CI/CD
+
+  * [x] PostgreSQL + Redis Docker Compose
+
+  * [x] Prisma Schema 设计
+
+* [x] **Sprint 2** - 核心功能
+  * [x] JWT 认证 + 刷新令牌
+
+  * [ ] 商品 CRUD + 分页搜索
+
+  * [ ] 购物车（Redis 存储）
+
+* [ ] **Sprint 3** - 订单系统
+  * [ ] 订单创建 + 状态机
+
+  * [ ] Stripe 支付集成
+
+  * [ ] 邮件通知
+
+* [ ] **Sprint 4** - 上线准备
+  * [ ] 负载测试（k6）
+
+  * [ ] OWASP 安全检查
+
+  * [ ] K8s 部署配置
+
+***
 
 ## 部署配置
 
@@ -387,24 +402,24 @@ volumes:
   pgdata:
 ```
 
----
+***
 
 ## API 文档摘要
 
 ### 端点概览
 
-| 方法 | 路径 | 描述 | 认证 |
-|------|------|------|------|
-| `POST` | `/api/auth/login` | 用户登录 | ❌ |
-| `POST` | `/api/auth/register` | 用户注册 | ❌ |
-| `POST` | `/api/auth/refresh` | 刷新令牌 | ❌ |
-| `GET` | `/api/users/me` | 获取当前用户 | ✅ |
-| `PUT` | `/api/users/me` | 更新用户资料 | ✅ |
-| `GET` | `/api/products` | 商品列表 | ❌ |
-| `GET` | `/api/products/:id` | 商品详情 | ❌ |
-| `POST` | `/api/products` | 创建商品 | ✅ Admin |
-| `POST` | `/api/orders` | 创建订单 | ✅ |
-| `GET` | `/api/orders/:id` | 订单详情 | ✅ |
+| 方法     | 路径                   | 描述     | 认证      |
+| ------ | -------------------- | ------ | ------- |
+| `POST` | `/api/auth/login`    | 用户登录   | ❌       |
+| `POST` | `/api/auth/register` | 用户注册   | ❌       |
+| `POST` | `/api/auth/refresh`  | 刷新令牌   | ❌       |
+| `GET`  | `/api/users/me`      | 获取当前用户 | ✅       |
+| `PUT`  | `/api/users/me`      | 更新用户资料 | ✅       |
+| `GET`  | `/api/products`      | 商品列表   | ❌       |
+| `GET`  | `/api/products/:id`  | 商品详情   | ❌       |
+| `POST` | `/api/products`      | 创建商品   | ✅ Admin |
+| `POST` | `/api/orders`        | 创建订单   | ✅       |
+| `GET`  | `/api/orders/:id`    | 订单详情   | ✅       |
 
 ### 响应格式
 
@@ -444,7 +459,7 @@ volumes:
 }
 ```
 
----
+***
 
 ## 总结
 
@@ -454,13 +469,24 @@ volumes:
 > 2. PostgreSQL 作为主数据库，Redis 处理缓存和会话
 > 3. Docker Compose 统一管理开发环境
 > 4. 合理的时间复杂度选择决定了系统性能上限
+> 5. 11
+> 6. 22
+>
+>    <br />
 
 本文档综合使用了以下 Markdown 功能：
 
-- **文本格式**：加粗、斜体、行内代码
-- **代码高亮**：TypeScript、SQL、YAML、JSON
-- **Mermaid 图表**：架构图、时序图、ER 图、甘特图
-- **KaTeX 数学**：行内公式、块级公式
-- **表格**：数据表、对齐
-- **列表**：任务列表、嵌套列表
-- **引用块**：多层引用、带格式引用
+* **文本格式**：加粗、斜体、行内代码
+
+* **代码高亮**：TypeScript、SQL、YAML、JSON
+
+* **Mermaid 图表**：架构图、时序图、ER 图、甘特图
+
+* **KaTeX 数学**：行内公式、块级公式
+
+* **表格**：数据表、对齐
+
+* **列表**：任务列表、嵌套列表
+
+* **引用块**：多层引用、带格式引用
+

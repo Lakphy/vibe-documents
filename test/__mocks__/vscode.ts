@@ -79,9 +79,12 @@ export const workspace = {
   openTextDocument: vi.fn().mockResolvedValue({
     getText: () => '# Test Markdown\n\nHello world',
     uri: Uri.file('/test/file.md'),
+    isDirty: false,
+    save: vi.fn().mockResolvedValue(true),
   }),
   createFileSystemWatcher: vi.fn(() => createMockFileSystemWatcher()),
   onDidChangeTextDocument: vi.fn(() => createMockDisposable()),
+  onDidSaveTextDocument: vi.fn(() => createMockDisposable()),
   workspaceFolders: [{ uri: Uri.file('/test/workspace') }],
   applyEdit: vi.fn().mockResolvedValue(true),
 };

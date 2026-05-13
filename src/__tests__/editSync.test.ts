@@ -36,6 +36,91 @@ describe('编辑同步（双向通信）', () => {
       const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
       expect(messageHandler).toBeDefined();
     });
+
+    it('save 消息触发当前文档保存', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const save = vi.fn().mockResolvedValue(true);
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => '# Dirty',
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+        save,
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'save' });
+
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('save 消息带 content 时先应用最新内容再保存', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const save = vi.fn().mockResolvedValue(true);
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => '# Before',
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+        save,
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'save', content: '# After' });
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalled();
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('edit 消息应用后标题显示未保存标记', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => '# Before',
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+        isDirty: false,
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'edit', content: '# After' });
+
+      expect(panel.title).toBe('Preview: file.md *');
+    });
+
+    it('save 成功后标题移除未保存标记', async () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      const save = vi.fn().mockResolvedValue(true);
+
+      vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({
+        getText: () => '# Before',
+        uri,
+        positionAt: (offset: number) => new vscode.Position(0, offset),
+        isDirty: true,
+        save,
+      } as any);
+
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0]?.[0];
+
+      await messageHandler({ type: 'save', content: '# After' });
+
+      expect(panel.title).toBe('Preview: file.md');
+    });
   });
 
   describe('toggleMode 功能', () => {
@@ -140,6 +225,34 @@ describe('编辑同步（双向通信）', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe('标题未保存状态', () => {
+    it('源文档变脏时同步更新 webview 标题', () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const documentChangeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+
+      documentChangeHandler({ document: { uri, isDirty: true } } as any);
+
+      expect(panel.title).toBe('Preview: file.md *');
+    });
+
+    it('源文档保存后同步移除 webview 标题标记', () => {
+      const uri = vscode.Uri.file('/test/file.md');
+      provider.showPreview(uri, vscode.ViewColumn.Active);
+
+      const panel = vi.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+      const documentChangeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0]?.[0];
+      const documentSaveHandler = vi.mocked(vscode.workspace.onDidSaveTextDocument).mock.calls[0]?.[0];
+
+      documentChangeHandler({ document: { uri, isDirty: true } } as any);
+      documentSaveHandler({ uri } as any);
+
+      expect(panel.title).toBe('Preview: file.md');
     });
   });
 

@@ -35,6 +35,7 @@ import { getVsCodeApi } from './vscodeApi';
 import { subscribe } from './messageBus';
 import { createEditableCodeBlockView } from './editableCodeBlockNodeView';
 import { resolveImageSrc } from '../src/utils';
+import { useSaveContentProvider } from './saveShortcut';
 
 const STREAMDOWN_HEADING_CLASSES: Record<number, string> = {
   1: 'mt-6 mb-2 font-semibold text-3xl',
@@ -269,6 +270,20 @@ function MilkdownEditorInner({ initialContent, baseUri }: MilkdownEditorInnerPro
   );
 
   const [loading, getInstance] = useInstance();
+
+  useSaveContentProvider(() => {
+    if (loading) return lastSentContent.current;
+    const editor = getInstance();
+    if (!editor) return lastSentContent.current;
+
+    try {
+      const markdown = editor.action(getMarkdown());
+      lastSentContent.current = markdown;
+      return markdown;
+    } catch {
+      return lastSentContent.current;
+    }
+  });
 
   useEffect(() => {
     return subscribe('update', (msg) => {

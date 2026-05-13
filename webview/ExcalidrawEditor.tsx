@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { useIsDark } from './ThemeContext';
 import { getVsCodeApi } from './vscodeApi';
+import { useSaveContentProvider } from './saveShortcut';
 
 const ExcalidrawComponent = lazy(() =>
   import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw }))
@@ -14,6 +15,7 @@ export function ExcalidrawEditor({ content }: ExcalidrawEditorProps) {
   const isDark = useIsDark();
   const onChangeTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastSentRef = useRef<string>(content);
+  const pendingContentRef = useRef<string | undefined>(undefined);
   const externalVersionRef = useRef(0);
 
   useEffect(() => {
@@ -40,22 +42,40 @@ export function ExcalidrawEditor({ content }: ExcalidrawEditorProps) {
     }
   }, [content]);
 
+  const serializeScene = useCallback((elements: readonly any[], _appState: any, files: any) => JSON.stringify(
+    { type: 'excalidraw', version: 2, elements, appState: { viewBackgroundColor: 'transparent' }, files },
+    null,
+    2
+  ), []);
+
   const handleChange = useCallback((elements: readonly any[], appState: any, files: any) => {
+    pendingContentRef.current = serializeScene(elements, appState, files);
+
     if (onChangeTimerRef.current) {
       clearTimeout(onChangeTimerRef.current);
     }
 
     onChangeTimerRef.current = setTimeout(() => {
-      const data = JSON.stringify(
-        { type: 'excalidraw', version: 2, elements, appState: { viewBackgroundColor: 'transparent' }, files },
-        null,
-        2
-      );
+      const data = pendingContentRef.current;
+      if (typeof data !== 'string') return;
       if (data === lastSentRef.current) return;
       lastSentRef.current = data;
+      pendingContentRef.current = undefined;
       getVsCodeApi()?.postMessage({ type: 'edit', content: data });
     }, 300);
-  }, []);
+  }, [serializeScene]);
+
+  useSaveContentProvider(() => {
+    if (onChangeTimerRef.current) {
+      clearTimeout(onChangeTimerRef.current);
+      onChangeTimerRef.current = undefined;
+    }
+
+    const contentToSave = pendingContentRef.current ?? lastSentRef.current;
+    pendingContentRef.current = undefined;
+    lastSentRef.current = contentToSave;
+    return contentToSave;
+  });
 
   useEffect(() => {
     return () => {

@@ -17,6 +17,7 @@ import { MermaidBlock } from './MermaidBlock';
 import { CODE_HIGHLIGHT_THEMES } from './markdownPreviewConfig';
 import { useCodeBlockSelectAll } from './useCodeBlockSelectAll';
 import { codePlugin } from './codeHighlighter';
+import { useSaveShortcut } from './saveShortcut';
 import type { CustomRendererProps } from 'streamdown';
 
 const MilkdownEditor = lazy(() => import('./MilkdownEditor').then(m => ({ default: m.MilkdownEditor })));
@@ -56,6 +57,7 @@ export function App() {
   const contentContainerRef = useRef<HTMLDivElement>(null);
   const { state: searchState, actions: searchActions, searchInputRef } = useSearch(mode, contentContainerRef);
   useCodeBlockSelectAll(contentContainerRef, fileType === 'markdown' && (mode === 'preview' || mode === 'wysiwyg'));
+  useSaveShortcut();
 
   useEffect(() => {
     if (!visitedModes.current.has(mode)) {

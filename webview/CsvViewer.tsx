@@ -4,6 +4,7 @@ import { VirtualGrid } from './csv/VirtualGrid';
 import { CsvToolbar } from './csv/CsvToolbar';
 import { ContextMenu } from './csv/ContextMenu';
 import { getVsCodeApi } from './vscodeApi';
+import { useSaveContentProvider } from './saveShortcut';
 
 interface CsvViewerProps {
   content: string;
@@ -67,6 +68,18 @@ export function CsvViewer({ content }: CsvViewerProps) {
       openSearch();
     }
   }, [showSearch, openSearch, closeSearch]);
+
+  useSaveContentProvider(() => {
+    if (!state.headers.length) return undefined;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+
+    const csv = serialize();
+    lastContentRef.current = csv;
+    return csv;
+  });
 
   // Cmd+F / Ctrl+F (document 级别，确保在任何焦点状态下都能工作)
   useEffect(() => {
