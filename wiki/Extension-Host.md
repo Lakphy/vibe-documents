@@ -1,221 +1,127 @@
 # 扩展宿主层
 
-> 扩展宿主层运行在 Node.js 进程中，负责命令注册、Custom Text Editor 生命周期管理、CodeLens 注入和 `TextDocument` 双向同步。
+扩展宿主层位于 `src/`，运行在 VS Code Extension Host 中。它不渲染 UI，只负责把文件、命令和 Webview 连接起来。
 
----
+## 文件职责
 
-## 文件概览
+| 文件 | 代码职责 |
+| --- | --- |
+| `src/extension.ts` | 创建 provider，注册 Custom Editors、CodeLens 和命令 |
+| `src/customTextEditorProvider.ts` | 实现 `vscode.CustomTextEditorProvider`，处理 Webview 生命周期和双向同步 |
+| `src/codeLensProvider.ts` | 为支持的文件返回第一行 CodeLens |
+| `src/editorTypes.ts` | 定义 `FileType`、viewType 常量和扩展名推断 |
+| `src/textDocumentEdits.ts` | 用 `fast-diff` 生成并应用增量 `WorkspaceEdit` |
+| `src/webviewHost.ts` | 配置 Webview 资源根、脚本样式 URI 和 HTML |
+| `src/utils.ts` | 提供 nonce、HTML 模板和图片路径解析 |
 
-| 文件 | 职责 |
-|------|------|
-| `src/extension.ts` | 扩展入口，注册 3 个 Custom Text Editor、3 个 CodeLens、5 个命令 |
-| `src/customTextEditorProvider.ts` | 单例 `VibeCustomTextEditorProvider` 处理 Markdown / CSV / Excalidraw 三种 viewType |
-| `src/codeLensProvider.ts` | `PreviewCodeLensProvider` 在文件顶部插入 "Open with Vibe..." 行级按钮 |
-| `src/editorTypes.ts` | `FileType` 类型、`inferFileType()`、`getCustomEditorViewType()` |
-| `src/textDocumentEdits.ts` | `applyTextDocumentContent()` — 基于 `fast-diff` 的增量 `WorkspaceEdit` |
-| `src/webviewHost.ts` | `configureEditorWebview()` — 配置 Webview 选项与注入 HTML；`getResourceBaseUri()` |
-| `src/utils.ts` | `getNonce()`、`buildPreviewHtml()`、`resolveImageSrc()` |
+## 激活事件
 
----
+`package.json` 声明的激活事件是：
 
-## extension.ts — 扩展入口
-
-### 激活事件
-
-`package.json` 中声明 8 个 `activationEvents`，VS Code 在任一触发时激活扩展：
-
-- `onLanguage:markdown`
-- `onLanguage:csv`
-- `onLanguage:excalidraw`
-- `onCustomEditor:vibeDocuments.markdownEditor`
-- `onCustomEditor:vibeDocuments.csvEditor`
-- `onCustomEditor:vibeDocuments.excalidrawEditor`
-- `onCommand:vibeDocuments.showExcalidrawPreview`
-- `onCommand:vibeDocuments.showCsvPreview`
-
-### Custom Editor 注册
-
-`activate()` 内创建一个共享的 `VibeCustomTextEditorProvider` 实例，并依次注册 3 个 `viewType`：
-
-```typescript
-const provider = new VibeCustomTextEditorProvider(context);
-
-context.subscriptions.push(
-  vscode.window.registerCustomEditorProvider(
-    CUSTOM_EDITOR_VIEW_TYPES.markdown, provider,
-    { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: true },
-  ),
-  vscode.window.registerCustomEditorProvider(
-    CUSTOM_EDITOR_VIEW_TYPES.csv, provider,
-    { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: true },
-  ),
-  vscode.window.registerCustomEditorProvider(
-    CUSTOM_EDITOR_VIEW_TYPES.excalidraw, provider,
-    { webviewOptions: { retainContextWhenHidden: true }, supportsMultipleEditorsPerDocument: true },
-  ),
-  // ...
-);
+```json
+[
+  "onLanguage:markdown",
+  "onLanguage:csv",
+  "onLanguage:excalidraw",
+  "onCustomEditor:vibeDocuments.markdownEditor",
+  "onCustomEditor:vibeDocuments.csvEditor",
+  "onCustomEditor:vibeDocuments.excalidrawEditor",
+  "onCommand:vibeDocuments.showExcalidrawPreview",
+  "onCommand:vibeDocuments.showCsvPreview"
+]
 ```
 
-`package.json` 中所有 `customEditors` 条目均使用 `priority: "option"`，因此双击文件仍打开原生文本编辑器，仅在用户主动选择 Vibe 命令、CodeLens 或 `Reopen With...` 时才进入 Vibe Editor。
+当前清单没有为 `vibeDocuments.showPreview` 或 `vibeDocuments.showPreviewToSide` 单独声明 `onCommand` 激活事件；Markdown 场景依赖 `onLanguage:markdown` 和 custom editor 激活路径。
 
-### CodeLens 注册
+## Custom Editors
 
-```typescript
-vscode.languages.registerCodeLensProvider(
-  { language: 'markdown' }, new PreviewCodeLensProvider('markdown'),
-);
-vscode.languages.registerCodeLensProvider(
-  { pattern: '**/*.excalidraw' }, new PreviewCodeLensProvider('excalidraw'),
-);
-vscode.languages.registerCodeLensProvider(
-  { pattern: '**/*.csv' }, new PreviewCodeLensProvider('csv'),
-);
+`activate()` 使用同一个 `VibeCustomTextEditorProvider` 注册三个 viewType：
+
+| fileType | viewType | selector |
+| --- | --- | --- |
+| `markdown` | `vibeDocuments.markdownEditor` | `*.md`、`*.markdown` |
+| `csv` | `vibeDocuments.csvEditor` | `*.csv` |
+| `excalidraw` | `vibeDocuments.excalidrawEditor` | `*.excalidraw` |
+
+三个注册都使用：
+
+```ts
+{
+  webviewOptions: { retainContextWhenHidden: true },
+  supportsMultipleEditorsPerDocument: true,
+}
 ```
 
-`PreviewCodeLensProvider` 根据 `fileType` 在第一行返回一个 `CodeLens`，分别对应 5 个命令中的 `showPreview` / `showCsvPreview` / `showExcalidrawPreview`。
+`package.json` 中的三个 custom editor 都是 `priority: "option"`，因此它们不会强制替代默认文本编辑器。
 
-### 命令
+## 命令
 
-| 命令 ID | ViewColumn | 备注 |
-|--------|------------|------|
-| `vibeDocuments.showPreview` | `Active` | Markdown 在当前编辑器列打开（注册了 `Ctrl/Cmd+Shift+V` 快捷键，`when: editorLangId == markdown`） |
-| `vibeDocuments.showPreviewToSide` | `Beside` | Markdown 在侧边列打开（无内置快捷键，可通过命令面板调用） |
-| `vibeDocuments.showExcalidrawPreview` | `Active` | 触发条件 `resourceExtname == .excalidraw`（注册了 `Ctrl/Cmd+Shift+V`） |
-| `vibeDocuments.showCsvPreview` | `Active` | 触发条件 `resourceExtname == .csv`（注册了 `Ctrl/Cmd+Shift+V`） |
-| `vibeDocuments.toggleMode` | — | 调 `provider.toggleMode()` 切换 Markdown 模式（`when: vibeDocumentsPreviewFocused`） |
+| 命令 | 行为 |
+| --- | --- |
+| `vibeDocuments.showPreview` | 在当前编辑器列用 `vscode.openWith()` 打开推断出的 Vibe viewType |
+| `vibeDocuments.showPreviewToSide` | 在侧边列用 `vscode.openWith()` 打开推断出的 Vibe viewType |
+| `vibeDocuments.showExcalidrawPreview` | 在当前编辑器列打开推断出的 Vibe viewType |
+| `vibeDocuments.showCsvPreview` | 在当前编辑器列打开推断出的 Vibe viewType |
+| `vibeDocuments.toggleMode` | 向第一个 active Webview panel 发送 `{ type: 'toggleMode' }` |
 
-四个 `showXxx` 命令统一走辅助函数 `openWithVibeEditor(uri, column)`：
+四个打开命令共用 `openWithVibeEditor(uri, column)`。如果命令没有传入 URI，它会使用 `vscode.window.activeTextEditor?.document.uri`。如果无法得到目标 URI，它直接返回。
 
-```typescript
-const openWithVibeEditor = (uri: vscode.Uri | undefined, column: vscode.ViewColumn) => {
-  const targetUri = uri ?? vscode.window.activeTextEditor?.document.uri;
-  if (!targetUri) return;
-  return vscode.commands.executeCommand(
-    'vscode.openWith',
-    targetUri,
-    getCustomEditorViewType(targetUri.fsPath),
-    { viewColumn: column },
-  );
-};
-```
+## CodeLens
 
----
+`PreviewCodeLensProvider` 始终返回一个位于 `Range(0, 0, 0, 0)` 的 CodeLens。标题和命令由构造函数传入的 `fileType` 决定。
 
-## customTextEditorProvider.ts — Custom Text Editor
+| fileType | title | command |
+| --- | --- | --- |
+| `markdown` | `$(open-preview)  Open Vibe Preview` | `vibeDocuments.showPreview` |
+| `csv` | `$(open-preview)  Open CSV Preview` | `vibeDocuments.showCsvPreview` |
+| `excalidraw` | `$(open-preview)  Open Excalidraw Editor` | `vibeDocuments.showExcalidrawPreview` |
 
-### 文档模型
+CodeLens 的参数是当前 `document.uri`。
 
-`VibeCustomTextEditorProvider` 实现 `vscode.CustomTextEditorProvider` 接口。VS Code 在用户打开支持的文件时调用 `resolveCustomTextEditor(document, panel, token)`，将工作副本 `TextDocument` 传入。Vibe 不再自行 `openTextDocument(uri)`，因此脏标记、保存、hot exit、revert、`supportsMultipleEditorsPerDocument` 多 editor 同步全部由 VS Code 原生承担。
+## Custom Text Editor 生命周期
 
-### 打开流程
+`resolveCustomTextEditor(document, panel, token)` 的实际流程是：
 
-```
-resolveCustomTextEditor(document, panel)
-  │
-  ├── 1. this.panels.add(panel)
-  ├── 2. panel.iconPath = ThemeIcon('open-preview')
-  ├── 3. configureEditorWebview(context, panel, document.uri)
-  ├── 4. 注册 onDidReceiveMessage（处理 ready / edit / save）
-  ├── 5. 注册 onDidChangeTextDocument（uri 匹配时推送 update）
-  └── 6. 注册 onDidDispose（清理监听并从 panels 集合移除）
-```
+1. 根据 `document.uri.fsPath` 推断 `fileType`。
+2. 把 `panel` 加入 provider 的 panel 集合。
+3. 设置 `panel.iconPath = new vscode.ThemeIcon('open-preview')`。
+4. 调用 `configureEditorWebview(context, panel, document.uri)`。
+5. 注册 `workspace.onDidChangeTextDocument`。
+6. 注册 `panel.webview.onDidReceiveMessage`。
+7. 注册 `panel.onDidDispose` 清理 pending timer、panel 集合和监听器。
 
-### 内容推送
+## 文档推送
 
-```typescript
-const postDocumentContent = (force = false) => {
-  const content = document.getText();
-  if (!force && content === lastSentContent) return;
-  lastSentContent = content;
-  panel.webview.postMessage({
-    type: 'update',
-    content,
-    baseUri: getResourceBaseUri(panel, document.uri),
-    fileType,    // 由 inferFileType(document.uri.fsPath) 解析
-  });
-};
-```
+`postDocumentContent(force = false)` 会读取 `document.getText()`，并在非强制模式下跳过与 `lastSentContent` 相同的内容。推送消息包含 `type`、`content`、`baseUri` 和 `fileType`。
 
-`ready` 消息（Webview 挂载完成后发送）走 `postDocumentContent(true)` 强制推送一次，绕过去重；其余触发场景（文件变更）走常规去重路径。
+外部文档变更不会立即发送 update，而是调用 `scheduleDocumentContentPost()`。该函数用 50ms 定时器合并连续变化，只发送最后一次内容。`ready` 和 `dispose` 都会清理这个定时器。
 
-### 编辑回写
+## Webview 消息
 
-Webview 发送 `{ type: 'edit', content }`，扩展通过 `applyTextDocumentContent()` 将完整内容转换为增量 `WorkspaceEdit`，避免全量 replace 带来的 prosemirror selection 抖动：
+| 消息 | 扩展端行为 |
+| --- | --- |
+| `{ type: 'ready' }` | 清理 pending update 并强制推送当前文档 |
+| `{ type: 'edit', content }` | 串行调用 `applyTextDocumentContent(document, content)` |
+| `{ type: 'save', content? }` | 如带 content 则先应用编辑，再调用 `document.save()` |
+| 其他消息 | 返回 `undefined`，不做处理 |
 
-```typescript
-const applied = await applyTextDocumentContent(document, content);
-if (applied) lastSentContent = content;
-```
+`edit` 和 `save` 都进入 `webviewMessageQueue`，这样多个异步编辑和保存不会交错。
 
-`edit` 和 `save` 消息在 `webviewMessageQueue` 中串行执行，避免 save 时与新到的 edit 交错。
+## 增量编辑
 
-### 保存
+`createTextDocumentEdit(document, nextContent)` 读取当前文档全文，用 `fast-diff` 比较当前内容和目标内容。相等片段只推进 offset；删除片段调用 `edit.delete()`；插入片段调用 `edit.insert()`。没有变化时 `applyTextDocumentContent()` 直接返回 `true`。
 
-```typescript
-const saveDocument = async (content?: string) => {
-  const applied = typeof content === 'string'
-    ? await applyContentFromWebview(content)
-    : true;
-  if (!applied) {
-    vscode.window.showErrorMessage(`Failed to apply changes before saving ${document.fileName}.`);
-    return;
-  }
-  const saved = await document.save();
-  if (!saved) {
-    vscode.window.showErrorMessage(`Failed to save ${document.fileName}.`);
-  }
-};
-```
+## Webview 宿主配置
 
-### 模式切换
+`configureEditorWebview()` 设置 `enableScripts: true`，并把以下路径加入 `localResourceRoots`：
 
-`toggleMode()` 遍历 `this.panels`，向第一个 `active` 面板发送 `{ type: 'toggleMode' }`（用于 Markdown 在 Preview/WYSIWYG 之间循环；CSV 和 Excalidraw 编辑器忽略该消息）。
+- `<extensionPath>/dist`
+- `<extensionPath>/dist/webview-assets`
+- 当前资源所在目录
+- 当前工作区中的所有 workspace folder
 
----
+它固定引用 `dist/webview-assets/webview.js` 和 `dist/webview-assets/webview.css`，并用 `buildPreviewHtml()` 注入 CSP、CSS `<link>`、`#root` 和带 nonce 的 module script。
 
-## webviewHost.ts — Webview 宿主配置
+## 工具函数
 
-`configureEditorWebview(context, panel, resourceUri)`：
-
-- 设置 `enableScripts: true`
-- 设置 `localResourceRoots`：
-  - `<extensionPath>/dist`
-  - `<extensionPath>/dist/webview-assets`
-  - 当前文件所在目录
-  - 所有 `workspaceFolders`
-- 通过 `panel.webview.asWebviewUri()` 解析 `dist/webview-assets/webview.js` 和 `dist/webview-assets/webview.css`
-- 调用 `buildPreviewHtml()` 注入完整 HTML（含 CSP、`<link rel="stylesheet">`、`<div id="root"></div>` 和带 nonce 的 `<script type="module">`）
-
-`getResourceBaseUri(panel, resourceUri)` 返回 `dirname(resourceUri.fsPath)` 的 Webview URI 字符串，用于解析 Markdown 中的相对图片路径。
-
----
-
-## utils.ts — 工具函数
-
-### `getNonce()`
-
-生成长度 32、字符集 `A-Za-z0-9` 的随机字符串。
-
-### `buildPreviewHtml(params)`
-
-构建 Webview 的 HTML 模板。`params` 字段：`cspSource`、`nonce`、`scriptUri`、`cssUri`。HTML 包含完整的 CSP `<meta>`（见[架构设计 - 安全模型](./Architecture.md#安全模型)）。
-
-### `resolveImageSrc(src, baseUri)`
-
-解析图片 URL：
-
-- 空字符串 → 原样返回
-- `http://` / `https://` / `data:` 前缀 → 原样返回
-- 空 `baseUri` → 原样返回
-- 其他情况（相对路径）→ `${baseUri}/${src}`
-
-> 注意：此函数同时被 Webview 通过 `import '../src/utils'` 使用。
-
----
-
-## 相关文档
-
-- [架构设计](./Architecture.md) — 整体架构与数据流
-- [Webview UI 层](./Webview-UI.md) — Webview 侧的实现
-- [API 参考](./API-Reference.md) — 命令和消息协议
+`getNonce()` 生成 32 位 `A-Za-z0-9` 随机字符串。`resolveImageSrc(src, baseUri)` 对空值、`http`、`https` 和 `data:` 原样返回，对其他路径返回 `${baseUri}/${src}`。

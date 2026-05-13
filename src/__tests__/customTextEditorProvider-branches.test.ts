@@ -58,6 +58,74 @@ describe('VibeCustomTextEditorProvider - extra branches', () => {
     expect(panel.webview.postMessage).not.toHaveBeenCalled();
   });
 
+  it('TextDocument 连续变化会在 50ms 后合并推送最后一次内容', async () => {
+    vi.useFakeTimers();
+    const uri = vscode.Uri.file('/test/file.md');
+    let content = '# Before';
+    const document = createDocument(uri, () => content);
+    const panel = (vscode as any).createMockPanel();
+
+    await provider.resolveCustomTextEditor(document, panel, {} as any);
+    const onChange = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0][0];
+
+    content = '# First';
+    onChange({ document } as any);
+    content = '# Second';
+    onChange({ document } as any);
+
+    vi.advanceTimersByTime(49);
+    expect(panel.webview.postMessage).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+    expect(panel.webview.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'update', content: '# Second' })
+    );
+    vi.useRealTimers();
+  });
+
+  it('ready 会清除待发送的批量更新，只保留强制首帧推送', async () => {
+    vi.useFakeTimers();
+    const uri = vscode.Uri.file('/test/file.md');
+    let content = '# Before';
+    const document = createDocument(uri, () => content);
+    const panel = (vscode as any).createMockPanel();
+
+    await provider.resolveCustomTextEditor(document, panel, {} as any);
+    const onChange = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0][0];
+    const messageHandler = panel.webview.onDidReceiveMessage.mock.calls[0][0];
+
+    content = '# Pending';
+    onChange({ document } as any);
+    messageHandler({ type: 'ready' });
+    vi.advanceTimersByTime(50);
+
+    expect(panel.webview.postMessage).toHaveBeenCalledTimes(1);
+    expect(panel.webview.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'update', content: '# Pending' })
+    );
+    vi.useRealTimers();
+  });
+
+  it('panel dispose 会取消待发送的批量更新', async () => {
+    vi.useFakeTimers();
+    const uri = vscode.Uri.file('/test/file.md');
+    let content = '# Before';
+    const document = createDocument(uri, () => content);
+    const panel = (vscode as any).createMockPanel();
+
+    await provider.resolveCustomTextEditor(document, panel, {} as any);
+    const onChange = vi.mocked(vscode.workspace.onDidChangeTextDocument).mock.calls[0][0];
+
+    content = '# Pending';
+    onChange({ document } as any);
+    panel._disposeCallback();
+    vi.advanceTimersByTime(50);
+
+    expect(panel.webview.postMessage).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it('edit 失败时不更新 lastSentContent', async () => {
     const uri = vscode.Uri.file('/test/file.md');
     const document = createDocument(uri, () => '# Before');

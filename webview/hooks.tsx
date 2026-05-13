@@ -17,10 +17,12 @@ export function useVsCodeMessages() {
   const [content, setContent] = useState('');
   const [baseUri, setBaseUri] = useState('');
   const [fileType, setFileType] = useState<FileType>('markdown');
+  const [hasReceivedUpdate, setHasReceivedUpdate] = useState(false);
 
   useEffect(() => {
     const unsub = subscribe('update', (msg: VsCodeMessage) => {
       if (msg.content !== undefined) {
+        setHasReceivedUpdate(true);
         setContent(msg.content);
         if (msg.baseUri) setBaseUri(msg.baseUri);
         if (msg.fileType) setFileType(msg.fileType);
@@ -32,7 +34,7 @@ export function useVsCodeMessages() {
     return unsub;
   }, []);
 
-  return { content, baseUri, fileType };
+  return { content, baseUri, fileType, hasReceivedUpdate };
 }
 
 export function useVsCodeTheme() {

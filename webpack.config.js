@@ -1,6 +1,6 @@
 const path = require('path');
 
-const extensionConfig = {
+const createExtensionConfig = (_env, argv = {}) => ({
   name: 'extension',
   target: 'node',
   entry: './src/extension.ts',
@@ -24,7 +24,7 @@ const extensionConfig = {
       },
     ],
   },
-  devtool: 'nosources-source-map',
-};
+  devtool: argv.mode === 'production' ? false : 'nosources-source-map',
+});
 
-module.exports = [extensionConfig];
+module.exports = (env, argv) => [createExtensionConfig(env, argv)];

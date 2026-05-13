@@ -1,165 +1,67 @@
 # 编辑器模式
 
-> 本文档介绍 Markdown 的两种渲染模式。CSV 和 Excalidraw 各自只有单一编辑器，不在本文档讨论范围内。
+本页只描述 Markdown 文件的两种模式。CSV 和 `.excalidraw` 文件没有 Preview/WYSIWYG 切换逻辑。
 
----
+## 模式表
 
-## 模式概览
+| 模式 | 组件 | 可编辑 | 说明 |
+| --- | --- | --- | --- |
+| `preview` | Streamdown | 否 | 默认模式，用于渲染 Markdown |
+| `wysiwyg` | Milkdown | 是 | 首次切换时 lazy 加载，之后保持挂载 |
 
-| 模式 | 引擎 | 可编辑 | 适用场景 |
-|------|------|--------|----------|
-| **Preview** | Streamdown | 否 | 阅读、查看最终效果 |
-| **WYSIWYG** | Milkdown v7 (ProseMirror) | 是 | 所见即所得编辑 |
+## 模式状态
 
----
+`MarkdownPreview` 内部定义：
 
-## Preview 模式（预览）
-
-### 渲染引擎
-
-使用 [Streamdown](https://www.npmjs.com/package/streamdown) 将 Markdown 渲染为 React 组件树。
-
-### 插件体系
-
-```typescript
-const plugins = useMemo(() => ({
-  code: codePlugin,    // @streamdown/code 自定义封装，加载 Shiki 双主题
-  math,                // @streamdown/math — KaTeX
-  cjk,                 // @streamdown/cjk — CJK 排版
-  renderers: [
-    { language: 'mermaid',    component: MermaidRenderer },
-    { language: 'excalidraw', component: ExcalidrawRenderer },
-  ],
-}), [MermaidRenderer]);
+```ts
+const MARKDOWN_MODES: EditorMode[] = ['preview', 'wysiwyg'];
+const [mode, setMode] = useState<EditorMode>('preview');
+const visitedModes = useRef(new Set<EditorMode>(['preview']));
 ```
 
-Mermaid 在 Preview 中作为代码块语言渲染（由 `MermaidBlock.tsx` 提供缩放、全屏、复制源码等高级功能），并非通过传统的 `streamdown/mermaid` 插件参数。
+Preview 一直存在于 DOM 中，只通过 `display` 控制可见性。WYSIWYG 只有在首次访问后才挂载，挂载后也通过 `display` 控制可见性。
 
-Streamdown 顶层 props 包括：
+## 模式切换入口
 
-```tsx
-<Streamdown
-  components={components}
-  plugins={plugins}
-  mermaid={mermaidOptions}            // 仅传递主题配置给内置 mermaid 主题
-  shikiTheme={CODE_HIGHLIGHT_THEMES}  // ['vitesse-light', 'vitesse-dark']
-  icons={lucideIcons}
->
-  {content}
-</Streamdown>
-```
+顶部 `Toolbar` 直接调用 `setMode(targetMode)`。扩展宿主的 `vibeDocuments.toggleMode` 命令会向当前 active panel 发送 `{ type: 'toggleMode' }`，`MarkdownPreview` 订阅该消息并在 `preview -> wysiwyg -> preview` 间循环。
 
-### 自定义组件（`useMarkdownComponents`）
+## Preview 模式
 
-| 组件 | 行为 |
-|------|------|
-| `img` | `resolveImageSrc(src, baseUri)` 解析相对路径 + `loading="lazy"` |
-| `a` | `target="_blank"` + `rel="noopener noreferrer"` |
-| `table` | `markdown-table-container` / `markdown-table-wrapper` 实现水平滚动 |
+Preview 模式使用 Streamdown。它把 Markdown 内容作为 children 传入 `<Streamdown>`，并配置自定义组件、插件、Mermaid 主题、Shiki 主题和 lucide icons。
 
-### 代码高亮双主题
+Preview 会按内容启用插件：
 
-Shiki 主题来自 `markdownPreviewConfig.ts` 的常量 `CODE_HIGHLIGHT_THEMES = ['vitesse-light', 'vitesse-dark']`。CSS（`webview/styles/main.css`）根据 `<html>` / `<body>` 上的 `vscode-light` / `vscode-dark` / `vscode-high-contrast` 类切换显示哪一套高亮 DOM（`.shiki-light` / `.shiki-dark`）。
+| 条件 | 插件 |
+| --- | --- |
+| 内容匹配数学语法正则 | `@streamdown/math` |
+| 内容包含 CJK 字符范围 | `@streamdown/cjk` |
+| 始终 | `codePlugin` |
+| 始终 | `mermaid` 和 `excalidraw` 代码块 renderer |
 
----
+## Preview 中的特殊代码块
 
-## WYSIWYG 模式（所见即所得）
+`mermaid` 代码块由 `MermaidBlock` 渲染。该组件负责懒渲染、缓存、源码视图、复制、全屏和缩放平移。`excalidraw` 代码块由 `ExcalidrawBlock` 渲染。该组件解析代码块中的 JSON，并在有效时加载 `@excalidraw/excalidraw` 的只读画布。
 
-### 渲染引擎
+## WYSIWYG 模式
 
-使用 [Milkdown](https://milkdown.dev/) v7（基于 ProseMirror）。
+WYSIWYG 模式使用 Milkdown v7。当前代码启用 commonmark、gfm、listener、history、clipboard、indent、trailing、自定义代码块 NodeView、自定义表格 NodeView 和图片 NodeView。
 
-### 组件结构
+WYSIWYG 不启用 Milkdown 数学插件，也不把 Mermaid 或 Excalidraw 变成专用编辑节点。数学、Mermaid 和 Excalidraw 内容在 WYSIWYG 中按 Markdown 文本或代码块编辑，最终渲染效果以 Preview 模式为准。
 
-```
-MilkdownEditor
-└── MilkdownProvider
-    └── Milkdown （ProseMirror 视图）
-```
+## 编辑回写
 
-### 插件清单
+Milkdown 的 `markdownUpdated` 回调会在内容真的变化时发送 `{ type: 'edit', content: markdown }`。以下情况不会发送 edit：
 
-`MilkdownEditor.tsx` 实际使用的插件（参见源码 import）：
+- 当前更新来自外部 update。
+- 新 Markdown 与 `prevMarkdown` 相同。
+- 新 Markdown 与 `lastSentContent.current` 相同。
 
-```typescript
-Editor.make()
-  .use(commonmark)      // CommonMark 基础语法
-  .use(gfm)             // GitHub Flavored Markdown（删除线、表格等）
-  .use(listener)        // 内容变更监听（markdownUpdated）
-  .use(history)         // Undo/Redo
-  .use(clipboard)       // 剪贴板
-  .use(indent)          // 缩进
-  .use(trailing)        // 尾随空行管理
-  .use(codeBlockNodeView)   // 自定义 NodeView（来自 editableCodeBlockNodeView.ts）
-  .use(tableNodeView)       // 自定义 table / row / header 等 NodeView
-  // ...
-```
+外部 update 到达时，Milkdown 会在编辑器已加载且内容不同的情况下执行 `replaceAll(msg.content)`。
 
-`MilkdownEditor` 不直接 `.use(math)` 或 `.use(diagram)`：数学公式和图表在 WYSIWYG 模式下以原始代码块形式编辑（通过自定义 `codeBlockNodeView` 提供编辑友好的语法高亮）。
+## 搜索与全选
 
-### 内容同步机制
+Markdown 模式下 `Ctrl/Cmd+F` 会打开 `SearchWidget`。搜索逻辑在 preview 模式优先搜索 `.markdown-section`，在 wysiwyg 模式优先搜索 `.ProseMirror`。`useCodeBlockSelectAll()` 在两种模式下都启用，用于实现代码块内的两阶段 `Ctrl/Cmd+A`。
 
-#### 初始化
+## 空内容
 
-```typescript
-ctx.set(defaultValueCtx, initialContent);
-```
-
-#### 编辑 → 回写
-
-```typescript
-ctx.get(listenerCtx).markdownUpdated((_ctx, markdown, prevMarkdown) => {
-  if (isExternalUpdate.current) return;
-  if (markdown === prevMarkdown) return;
-  if (markdown === lastSentContent.current) return;
-  lastSentContent.current = markdown;
-  getVsCodeApi()?.postMessage({ type: 'edit', content: markdown });
-});
-```
-
-#### 外部更新 → 编辑器
-
-```typescript
-const currentMarkdown = editor.action(getMarkdown());
-if (currentMarkdown === msg.content) return;
-isExternalUpdate.current = true;
-editor.action(replaceAll(msg.content));
-isExternalUpdate.current = false;
-```
-
-### 防循环策略
-
-| 标志 | 用途 |
-|------|------|
-| `isExternalUpdate` | 外部更新时为 `true`，阻止 `markdownUpdated` 触发回写 |
-| `lastSentContent` | 缓存上次发送的内容，相同内容不重复发送 |
-| 内容比对 | `markdown === prevMarkdown` 和 `getMarkdown() === msg.content` |
-
----
-
-## 模式切换
-
-### 工具栏切换
-
-`Toolbar.tsx` 按钮直接调用 `setMode(targetMode)`。
-
-### 快捷键循环切换
-
-`Ctrl/Cmd+Shift+E` → 扩展宿主 `provider.toggleMode()` → `panel.webview.postMessage({type:'toggleMode'})` → `messageBus.subscribe('toggleMode')` 切换：
-
-```
-preview → wysiwyg → preview → ...
-```
-
-### 切换时的挂载策略
-
-- **Preview** 始终挂载（`display: block | none`）
-- **WYSIWYG** 首次访问时进入 `visitedModes`，挂载后保留；后续切换通过 `display` 显隐而非卸载，避免重复初始化 ProseMirror
-
----
-
-## 相关文档
-
-- [Webview UI 层](./Webview-UI.md) — 组件树与 Hooks
-- [样式系统](./Styling-System.md) — 各模式的样式实现
-- [架构设计](./Architecture.md) — 数据流与防循环机制
+当 content 为空且当前模式是 preview 时，`MarkdownPreview` 不渲染 Streamdown，而是显示 `Waiting for content...`。

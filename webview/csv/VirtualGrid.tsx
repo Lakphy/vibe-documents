@@ -19,6 +19,10 @@ interface VirtualGridProps {
   canRedo: boolean;
 }
 
+function cellKey(row: number, col: number, totalCols: number) {
+  return row * totalCols + col;
+}
+
 function DragIndicatorLine({ indicator, totalWidth, getColWidth }: {
   indicator: DragIndicator;
   totalWidth: number;
@@ -87,6 +91,8 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
     overscan: 3,
   });
 
+  const virtualColumns = colVirtualizer.getVirtualItems();
+
   const totalWidth = useMemo(() => {
     let w = 0;
     for (let i = 0; i < totalCols; i++) w += getColWidth(i);
@@ -122,12 +128,12 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
   }, [endDrag]);
 
   const searchMatchSet = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<number>();
     for (const m of search.matches) {
-      set.add(`${m.row},${m.col}`);
+      set.add(cellKey(m.row, m.col, totalCols));
     }
     return set;
-  }, [search.matches]);
+  }, [search.matches, totalCols]);
 
   const currentMatch = useMemo(() => {
     if (search.currentMatchIndex < 0 || search.currentMatchIndex >= search.matches.length) return null;
@@ -155,7 +161,7 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
           <div className="csv-row-number-header" style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}>
             #
           </div>
-          {colVirtualizer.getVirtualItems().map(virtualCol => (
+          {virtualColumns.map(virtualCol => (
             <ColumnHeader
               key={virtualCol.index}
               index={virtualCol.index}
@@ -202,9 +208,10 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
                 >
                   {virtualRow.index + 1}
                 </div>
-                {colVirtualizer.getVirtualItems().map(virtualCol => {
+                {virtualColumns.map(virtualCol => {
                   const r = virtualRow.index;
                   const c = virtualCol.index;
+                  const sourceRow = sortedToSourceMap[r] ?? r;
                   return (
                     <CellRenderer
                       key={c}
@@ -216,8 +223,8 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
                       isSelected={isCellInSelection(r, c, selection)}
                       isActive={selection?.end.row === r && selection?.end.col === c}
                       isEditing={editingCell?.row === r && editingCell?.col === c}
-                      isSearchMatch={searchMatchSet.has(`${r},${c}`)}
-                      isCurrentMatch={currentMatch !== null && currentMatch.row === r && currentMatch.col === c}
+                      isSearchMatch={searchMatchSet.has(cellKey(sourceRow, c, totalCols))}
+                      isCurrentMatch={currentMatch !== null && currentMatch.row === sourceRow && currentMatch.col === c}
                       onMouseDown={handleCellMouseDown}
                       onMouseEnter={handleCellMouseEnter}
                       onDoubleClick={handleCellDoubleClick}

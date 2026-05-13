@@ -183,4 +183,69 @@ describe('MermaidBlock', () => {
     expect(document.querySelector('[data-streamdown="code-block-actions"]')).not.toBeNull();
     expect(screen.queryByTitle('在新标签页打开 Mermaid 图')).toBeNull();
   });
+
+  it('shows a render error state when Mermaid rejects the diagram', async () => {
+    renderMock.mockRejectedValueOnce(new Error('bad syntax'));
+
+    render(<MermaidBlock code="graph TD; Error-->State" config={{ theme: 'default' }} />);
+
+    expect(await screen.findByText('Mermaid render error')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Mermaid 视图控制')).getByTitle('全屏查看 Mermaid 图')).toBeDisabled();
+  });
+
+  it('waits for IntersectionObserver before rendering when the block is offscreen', async () => {
+    const originalObserver = globalThis.IntersectionObserver;
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observeMock = vi.fn();
+    const disconnectMock = vi.fn();
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+
+      observe = observeMock;
+      disconnect = disconnectMock;
+    }
+    globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+    render(<MermaidBlock code="graph TD; Lazy-->Render" config={{ theme: 'default' }} />);
+
+    expect(observeMock).toHaveBeenCalled();
+    expect(renderMock).not.toHaveBeenCalled();
+
+    act(() => {
+      observerCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mermaid-preview').querySelector('svg')).not.toBeNull();
+    });
+    expect(renderMock).toHaveBeenCalledTimes(1);
+    expect(disconnectMock).toHaveBeenCalled();
+
+    if (originalObserver) {
+      globalThis.IntersectionObserver = originalObserver;
+    } else {
+      delete (globalThis as { IntersectionObserver?: typeof IntersectionObserver }).IntersectionObserver;
+    }
+  });
+
+  it('reuses cached SVG for the same code and config', async () => {
+    const code = 'graph TD; Cache-->Hit';
+    const { unmount } = render(<MermaidBlock code={code} config={{ theme: 'default' }} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mermaid-preview').querySelector('svg')).not.toBeNull();
+    });
+    expect(renderMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+    renderMock.mockClear();
+    render(<MermaidBlock code={code} config={{ theme: 'default' }} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mermaid-preview').querySelector('svg')).not.toBeNull();
+    });
+    expect(renderMock).not.toHaveBeenCalled();
+  });
 });

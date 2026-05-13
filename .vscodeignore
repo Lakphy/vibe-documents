@@ -3,6 +3,7 @@ node_modules/**
 src/**
 webview/**
 test/**
+scripts/**
 showcases/**
 wiki/**
 webpack.config.js

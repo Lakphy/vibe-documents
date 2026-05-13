@@ -2,7 +2,7 @@
   "name": "vibe-documents",
   "displayName": "Vibe Documents - Cursor-style Markdown Preview",
   "description": "A beautiful Markdown preview extension inspired by Cursor's rendering style, with Mermaid, KaTeX, Shiki code highlighting and more.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "lakphy",
   "license": "MIT",
   "repository": {
@@ -168,14 +168,15 @@
     "vscode:prepublish": "npm run build",
     "build": "npm run build:ext && npm run build:webview",
     "build:ext": "webpack --mode production",
-    "build:webview": "vite build --config vite.config.webview.ts",
+    "build:webview": "vite build --config vite.config.webview.ts && node scripts/strip-webview-sourcemaps.mjs",
     "dev": "npm run dev:ext & npm run dev:webview",
     "dev:ext": "webpack --mode development --watch",
     "dev:webview": "vite build --config vite.config.webview.ts --watch",
     "package": "vsce package",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "perf:budget": "node scripts/check-performance-budget.mjs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",

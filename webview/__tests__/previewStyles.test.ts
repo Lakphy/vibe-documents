@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 
 const css = readFileSync(resolve(__dirname, '../styles/main.css'), 'utf8');
 const appSource = readFileSync(resolve(__dirname, '../App.tsx'), 'utf8');
+const markdownPreviewSource = readFileSync(resolve(__dirname, '../MarkdownPreview.tsx'), 'utf8');
 const milkdownSource = readFileSync(resolve(__dirname, '../MilkdownEditor.tsx'), 'utf8');
 const codeHighlighterSource = readFileSync(resolve(__dirname, '../codeHighlighter.ts'), 'utf8');
 const editableCodeBlockSource = readFileSync(resolve(__dirname, '../editableCodeBlockNodeView.ts'), 'utf8');
@@ -39,9 +40,9 @@ describe('markdown preview styles', () => {
   });
 
   it('renders edit mode through the same markdown preview shell', () => {
-    expect(appSource).toContain('markdown-container-root markdown-edit-container');
-    expect(appSource).toContain('markdown-section markdown-edit-section vd-typography');
-    expect(appSource).not.toContain('max-w-[900px] mx-auto px-8 pb-16 vd-typography');
+    expect(markdownPreviewSource).toContain('markdown-container-root markdown-edit-container');
+    expect(markdownPreviewSource).toContain('markdown-section markdown-edit-section vd-typography');
+    expect(markdownPreviewSource).not.toContain('max-w-[900px] mx-auto px-8 pb-16 vd-typography');
   });
 
   it('maps WYSIWYG heading classes to Streamdown heading sizes', () => {
@@ -84,8 +85,9 @@ describe('markdown preview styles', () => {
   it('shares the Streamdown code highlighter between preview and edit mode', () => {
     expect(codeHighlighterSource).toContain('createCodePlugin');
     expect(codeHighlighterSource).toContain('CODE_HIGHLIGHT_THEMES');
-    expect(appSource).toContain("import { codePlugin } from './codeHighlighter'");
-    expect(appSource).toContain("mode === 'preview' || mode === 'wysiwyg'");
+    expect(markdownPreviewSource).toContain("import { codePlugin } from './codeHighlighter'");
+    expect(markdownPreviewSource).toContain("mode === 'preview' || mode === 'wysiwyg'");
+    expect(appSource).toContain("lazy(() => import('./MarkdownPreview')");
   });
 
   it('does not repaint WYSIWYG code highlighting for unchanged code blocks', () => {

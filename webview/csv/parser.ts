@@ -65,7 +65,10 @@ export function parseCsv(text: string): string[][] {
 
 export function normalizeRows(rows: string[][]): string[][] {
   if (rows.length === 0) return rows;
-  const maxCols = Math.max(...rows.map(r => r.length));
+  let maxCols = 0;
+  for (const row of rows) {
+    if (row.length > maxCols) maxCols = row.length;
+  }
   return rows.map(r => {
     if (r.length < maxCols) {
       const padded = [...r];

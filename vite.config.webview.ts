@@ -16,7 +16,9 @@ export default defineConfig({
         assetFileNames: (assetInfo) => {
           const name = assetInfo.names?.[0] ?? '';
           if (name.endsWith('.css')) {
-            return 'webview.css';
+            return name === 'index.css' || name === 'main.css'
+              ? 'webview.css'
+              : 'chunks/[name]-[hash][extname]';
           }
           if (/\.(woff2?|ttf|eot)$/.test(name)) {
             return 'fonts/[name][extname]';
@@ -25,10 +27,10 @@ export default defineConfig({
         },
       },
     },
-    sourcemap: true,
+    sourcemap: false,
     minify: 'esbuild',
     target: 'es2020',
-    cssMinify: true,
+    cssMinify: 'esbuild',
   },
   resolve: {
     conditions: ['production', 'import', 'module', 'browser', 'default'],

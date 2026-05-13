@@ -1,131 +1,76 @@
 # Vibe Documents Wiki
 
-> **Vibe Documents** — 一款灵感源自 Cursor 渲染风格的 VS Code 文档预览/编辑扩展，内置 Mermaid 图表、KaTeX 数学公式、Shiki 代码高亮、CJK 排版优化，并附带 Excalidraw 全屏编辑器和虚拟滚动的 CSV 表格编辑器。
+Vibe Documents 是一个 VS Code Custom Text Editor 扩展，用同一个 Webview 应用打开 Markdown、CSV 和 `.excalidraw` 文件。扩展宿主负责命令、CodeLens、自定义编辑器生命周期和 `TextDocument` 同步，Webview 负责 React UI、渲染、编辑和快捷键交互。
 
----
+## 当前能力
 
-## 功能亮点
+| 文件类型 | 入口 | Webview 行为 |
+| --- | --- | --- |
+| Markdown | `vibeDocuments.markdownEditor` | 默认显示 Streamdown 预览，可切换到 Milkdown WYSIWYG 编辑 |
+| CSV | `vibeDocuments.csvEditor` | 使用虚拟滚动表格编辑 CSV，支持排序、搜索替换、复制粘贴、行列操作和撤销重做 |
+| Excalidraw | `vibeDocuments.excalidrawEditor` | 使用 `@excalidraw/excalidraw` 打开全屏画布并回写 `.excalidraw` JSON |
 
-| 功能 | 说明 |
-|------|------|
-| **Markdown 预览模式** | 基于 Streamdown 的只读渲染，复刻 Cursor 风格 |
-| **Markdown 所见即所得模式** | 基于 Milkdown（ProseMirror）v7 的富文本编辑 |
-| **Excalidraw 编辑器** | 直接打开 `.excalidraw` 文件进行手绘风格图形编辑 |
-| **CSV 编辑器** | 虚拟滚动表格，支持单元格编辑、列排序、搜索替换、撤销重做、复制粘贴 |
-| **双向同步** | Webview 编辑通过增量 `WorkspaceEdit` 实时写回；文件变更实时推送到 Webview |
-| **Mermaid 图表** | 流程图、时序图、甘特图等，支持暗色主题适配 |
-| **KaTeX 数学公式** | 行内 `$...$` 和行间 `$$...$$` |
-| **Shiki 代码高亮** | vitesse-light / vitesse-dark 双主题，自动跟随 VS Code 主题（通过 `.shiki-light` / `.shiki-dark` 类选择） |
-| **CJK 排版优化** | 中日韩文本换行和间距优化 |
-| **搜索高亮** | Markdown 预览/编辑模式基于 CSS Custom Highlights API 的 DOM 搜索；CSV 内置独立搜索/替换面板 |
+## Markdown 预览能力
 
----
+Markdown 预览由 `webview/MarkdownPreview.tsx` 和 Streamdown 实现。预览按内容启用 `@streamdown/math` 和 `@streamdown/cjk`，把 `mermaid` 与 `excalidraw` 代码块交给自定义懒加载渲染器处理，并使用 `webview/codeHighlighter.ts` 中的 Shiki 插件做按语言、按主题的异步高亮。
+
+## 同步模型
+
+Webview 启动后先发送 `{ type: 'ready' }`，扩展宿主收到后强制推送一次 `{ type: 'update', content, baseUri, fileType }`。外部文件变化会被 `VibeCustomTextEditorProvider` 以 50ms 定时器合并后推送。Webview 内的编辑通过 `{ type: 'edit', content }` 回写，保存快捷键通过 `{ type: 'save', content? }` 触发扩展端 `document.save()`。
+
+## 性能相关实现
+
+Webview 主入口只在收到首个 `update` 后才加载具体编辑器。Markdown、CSV、Excalidraw、Mermaid 块、Markdown 内嵌 Excalidraw 块和 Milkdown 编辑器都使用 `React.lazy()` 拆分。Shiki 只加载被请求的语言和主题，Mermaid 使用 IntersectionObserver、配置缓存和 SVG 缓存，CSV 搜索匹配会在单元格编辑时增量更新，在结构性编辑后重算。
 
 ## 文档导航
 
 | 文档 | 内容 |
-|------|------|
-| [快速安装使用指南](./Quick-Start.md) | 5 分钟上手，涵盖安装、使用和快捷键 |
-| [架构设计](./Architecture.md) | 整体架构、进程模型与数据流 |
-| [扩展宿主层](./Extension-Host.md) | Node.js 侧的扩展激活、命令注册与 Custom Text Editor |
-| [Webview UI 层](./Webview-UI.md) | React 前端的组件树、Hooks 和消息通信 |
-| [编辑器模式](./Editor-Modes.md) | Markdown Preview / WYSIWYG 模式的实现细节 |
-| [样式系统](./Styling-System.md) | Tailwind v4 主题桥接与单文件样式策略 |
-| [构建与开发](./Build-and-Development.md) | Webpack（扩展）+ Vite（Webview）双工具链 |
-| [测试体系](./Testing.md) | Vitest 测试框架、Mock 策略与测试用例 |
-| [API 参考](./API-Reference.md) | 命令、消息协议与核心类型定义 |
-| [贡献指南](./Contributing.md) | 代码规范、提交流程与开发环境搭建 |
-
----
-
-## 技术栈
-
-```
-扩展宿主 (Node.js)              Webview (Chromium)
-┌──────────────────┐            ┌───────────────────────┐
-│  TypeScript       │            │  React 19             │
-│  VS Code API      │◄──────────►│  Streamdown (preview) │
-│  fast-diff        │ postMessage│  Milkdown (WYSIWYG)   │
-│                   │            │  KaTeX / Mermaid      │
-└──────────────────┘            │  Shiki / Excalidraw   │
-                                 │  Tailwind CSS v4      │
-                                 └───────────────────────┘
-构建工具: Webpack 5（仅扩展） + Vite（仅 Webview）
-测试框架: Vitest 4 + jsdom + React Testing Library
-```
-
----
+| --- | --- |
+| [Quick Start](./Quick-Start.md) | 安装、构建、常用入口和快捷键 |
+| [Architecture](./Architecture.md) | 双进程架构、数据流、安全模型和性能策略 |
+| [Extension Host](./Extension-Host.md) | `src/` 中的命令、CodeLens、Custom Text Editor 和 Webview 宿主 |
+| [Webview UI](./Webview-UI.md) | `webview/` 中的 React 组件、Hooks、消息总线和编辑器路由 |
+| [Editor Modes](./Editor-Modes.md) | Markdown Preview 与 WYSIWYG 两种模式 |
+| [Styling System](./Styling-System.md) | Tailwind v4、VS Code 变量映射和第三方样式加载 |
+| [Build and Development](./Build-and-Development.md) | Webpack、Vite、脚本、产物和性能预算 |
+| [Testing](./Testing.md) | Vitest 配置、Mock 策略、测试范围和覆盖率 |
+| [API Reference](./API-Reference.md) | 命令、消息协议、类型和工具函数 |
+| [Contributing](./Contributing.md) | 开发流程和修改约束 |
 
 ## 项目结构
 
-```
+```text
 vibe-documents/
-├── src/                              # 扩展宿主代码 (Node.js)
-│   ├── extension.ts                  # 扩展入口，注册 Custom Editor、CodeLens、命令
-│   ├── customTextEditorProvider.ts   # Custom Text Editor 双向同步与防循环
-│   ├── codeLensProvider.ts           # CodeLens 渲染文件顶部 "Open with Vibe..." 按钮
-│   ├── editorTypes.ts                # FileType 推断与 viewType 映射
-│   ├── textDocumentEdits.ts          # 基于 fast-diff 的增量 WorkspaceEdit
-│   ├── webviewHost.ts                # Webview 资源根目录与 HTML/CSP 注入
-│   ├── utils.ts                      # nonce 生成、HTML 模板、resolveImageSrc
-│   └── __tests__/                    # 扩展层 Vitest 测试
-├── webview/                          # Webview 前端代码 (React)
-│   ├── index.tsx                     # React 入口（katex/streamdown/excalidraw/main.css 导入）
-│   ├── App.tsx                       # 根组件，按 fileType 路由 Markdown/CSV/Excalidraw
-│   ├── Toolbar.tsx                   # 预览/编辑模式切换
-│   ├── MilkdownEditor.tsx            # Milkdown WYSIWYG 编辑器
-│   ├── MermaidBlock.tsx              # Mermaid 块渲染（含全屏/缩放/复制源码）
-│   ├── ExcalidrawEditor.tsx          # Excalidraw 全屏编辑器
-│   ├── ExcalidrawBlock.tsx           # Markdown 内嵌的 Excalidraw 块
-│   ├── CsvViewer.tsx                 # CSV 编辑器入口
-│   ├── ThemeContext.tsx              # 暗/亮主题上下文
-│   ├── hooks.tsx                     # useVsCodeMessages / useMarkdownComponents / useVsCodeTheme
-│   ├── messageBus.ts                 # Webview 全局消息订阅总线
-│   ├── vscodeApi.ts                  # acquireVsCodeApi 单例缓存
-│   ├── codeHighlighter.ts            # Streamdown 代码高亮插件配置
-│   ├── markdownPreviewConfig.ts      # Shiki 主题配置常量
-│   ├── saveShortcut.ts               # Cmd+S 拦截与回写
-│   ├── useCodeBlockSelectAll.ts      # Cmd+A 智能两阶段全选
-│   ├── editableCodeBlockNodeView.ts  # Milkdown 代码块 NodeView
-│   ├── csv/                          # CSV 编辑器模块
-│   │   ├── types.ts                  # 状态、动作、选区类型
-│   │   ├── parser.ts                 # CSV 解析/序列化
-│   │   ├── history.ts                # UndoRedoStack（MAX_HISTORY=100）
-│   │   ├── store.ts                  # useReducer + 历史栈
-│   │   ├── VirtualGrid.tsx           # 虚拟滚动网格
-│   │   ├── ColumnHeader.tsx          # 表头（排序 + 列宽 + 拖拽换列）
-│   │   ├── CellRenderer.tsx          # 单元格渲染
-│   │   ├── CellEditor.tsx            # 行内编辑器
-│   │   ├── CsvToolbar.tsx            # 搜索/替换工具栏
-│   │   ├── ContextMenu.tsx           # 行/列右键菜单
-│   │   ├── useSelection.ts           # 选区/拖选/箭头移动
-│   │   ├── useKeyboard.ts            # 键盘快捷键（Undo/Redo/Arrow/Tab/Enter/F2/Delete/Escape）
-│   │   ├── useCopyPaste.ts           # 剪贴板（TSV）
-│   │   └── useDragReorder.ts         # 列拖拽换序
-│   ├── search/                       # 通用 DOM 搜索模块
-│   │   ├── regexUtils.ts             # 正则构建（caseSensitive/wholeWord/useRegex）
-│   │   ├── domHighlighter.ts         # CSS Custom Highlights API 渲染
-│   │   ├── useSearch.ts              # 搜索 Hook（preview/wysiwyg 容器自适应）
-│   │   └── SearchWidget.tsx          # 搜索面板 UI
-│   ├── styles/
-│   │   └── main.css                  # Tailwind v4 入口 + VS Code 变量桥接 + Cursor 设计令牌
-│   └── __tests__/                    # Webview 层 Vitest 测试
-├── test/                             # 通用测试
-│   ├── manifest.test.ts              # package.json 完整性测试
-│   ├── setup.ts                      # 测试设置（jest-dom 扩展）
-│   └── __mocks__/vscode.ts           # VS Code API Mock
-├── showcases/                        # 功能测试示例文件（基础格式、代码块、Mermaid、CSV 等）
-├── wiki/                             # 本 Wiki 文档
-├── dist/                             # 构建输出（webpack + vite）
-├── package.json                      # 扩展清单与依赖
-├── webpack.config.js                 # Webpack 配置（仅扩展）
-├── vite.config.webview.ts            # Vite 配置（仅 Webview）
-├── vitest.config.ts                  # Vitest 配置
-└── tsconfig.json                     # TypeScript 配置
+├── src/                         # VS Code Extension Host 代码
+│   ├── extension.ts             # activate/deactivate，注册命令、CodeLens、Custom Editors
+│   ├── customTextEditorProvider.ts
+│   ├── codeLensProvider.ts
+│   ├── editorTypes.ts
+│   ├── textDocumentEdits.ts
+│   ├── webviewHost.ts
+│   └── utils.ts
+├── webview/                     # React Webview 应用
+│   ├── App.tsx                  # 首次 update 后按 fileType 懒加载编辑器
+│   ├── MarkdownPreview.tsx      # Markdown 预览和 WYSIWYG 模式容器
+│   ├── MilkdownEditor.tsx
+│   ├── CsvViewer.tsx
+│   ├── ExcalidrawEditor.tsx
+│   ├── MermaidBlock.tsx
+│   ├── ExcalidrawBlock.tsx
+│   ├── csv/
+│   ├── search/
+│   └── styles/main.css
+├── test/                        # 测试设置和 VS Code Mock
+├── scripts/                     # Webview sourcemap 清理和性能预算检查
+├── wiki/                        # 本文档
+├── dist/                        # 构建输出
+├── package.json
+├── webpack.config.js
+├── vite.config.webview.ts
+├── vitest.config.ts
+└── tsconfig.json
 ```
-
----
 
 ## 许可证
 
-MIT License
+项目使用 MIT License。

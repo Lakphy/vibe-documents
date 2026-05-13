@@ -20,6 +20,7 @@ describe('useVsCodeMessages', () => {
     expect(result.current.content).toBe('');
     expect(result.current.baseUri).toBe('');
     expect(result.current.fileType).toBe('markdown');
+    expect(result.current.hasReceivedUpdate).toBe(false);
   });
 
   it('处理 update 消息更新 content 和 baseUri', () => {
@@ -31,6 +32,7 @@ describe('useVsCodeMessages', () => {
 
     expect(result.current.content).toBe('# Hello');
     expect(result.current.baseUri).toBe('https://base');
+    expect(result.current.hasReceivedUpdate).toBe(true);
   });
 
   it('处理 update 消息更新 fileType', () => {

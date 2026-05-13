@@ -1,191 +1,109 @@
 # 测试体系
 
-> 项目使用 Vitest 作为测试框架，配合 jsdom 环境和 VS Code API Mock，覆盖扩展宿主和 Webview 两个层面。截至最新一次测试运行，共 425 个测试通过，行覆盖率 94.11%、分支覆盖率 85.75%。
+项目使用 Vitest、jsdom、React Testing Library 和本地 VS Code API Mock。最新本地覆盖率运行结果为 36 个测试文件通过、464 个测试通过；语句覆盖率 94%、分支覆盖率 88.3%、函数覆盖率 91.98%、行覆盖率 95.92%。
 
----
-
-## 测试框架
-
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| Vitest | ^4.1.5 | 测试运行器和断言库 |
-| jsdom | ^29.1.1 | 浏览器环境模拟 |
-| @testing-library/react | ^16.3.2 | React 组件/Hook 测试 |
-| @testing-library/jest-dom | ^6.9.1 | DOM 断言扩展 |
-| @testing-library/user-event | ^14.6.1 | 用户交互模拟 |
-| @vitest/coverage-v8 | ^4.1.6 | V8 覆盖率收集 |
-
----
-
-## 配置
-
-### vitest.config.ts
-
-```typescript
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    include: ['src/**/*.test.ts', 'webview/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
-    setupFiles: ['./test/setup.ts'],
-    css: false,
-    alias: {
-      vscode: new URL('./test/__mocks__/vscode.ts', import.meta.url).pathname,
-    },
-  },
-});
-```
-
-关键配置：
-- `environment: 'jsdom'` — 所有测试运行在 jsdom 中
-- `include` — 仅匹配 `src/`、`webview/`、`test/` 下的 `*.test.{ts,tsx}` 文件
-- `css: false` — 跳过 CSS 解析
-- `alias.vscode` — 将 `import * as vscode from 'vscode'` 重定向到本地 Mock 的绝对路径
-
----
-
-## VS Code API Mock
-
-### `test/__mocks__/vscode.ts`
-
-完整模拟扩展宿主代码用到的 VS Code API：
-
-| Mock | 说明 |
-|------|------|
-| `Uri.file()` / `Uri.parse()` | 文件 URI |
-| `ViewColumn` | 编辑器列枚举 |
-| `window.createWebviewPanel` / `registerCustomEditorProvider` / `showErrorMessage` / `showInformationMessage` / `activeTextEditor` | 窗口能力 |
-| `workspace.openTextDocument` / `applyEdit` / `onDidChangeTextDocument` / `onDidSaveTextDocument` / `createFileSystemWatcher` / `workspaceFolders` | 工作区能力 |
-| `commands.registerCommand` / `executeCommand` | 命令系统 |
-| `languages.registerCodeLensProvider` | CodeLens 注册 |
-| `WorkspaceEdit` | 自实现 `_edits` 数组 + `getEdits()` |
-| `Range` / `Position` / `CodeLens` / `ThemeIcon` / `RelativePattern` | 数据类型 |
-| `createMockPanel()` / `createMockWebview()` | 用于断言的可观察 WebviewPanel / Webview |
-
-#### 可观察的 WebviewPanel
-
-```typescript
-const panel = createMockPanel();
-panel.webview.postMessage           // vi.fn()
-panel.webview.onDidReceiveMessage   // vi.fn() — 测试时取 .mock.calls[0][0] 拿到 handler 直接调用
-panel.onDidDispose                  // vi.fn() — 同上，得到 disposeCallback
-panel._disposeCallback()            // 测试便捷方法：触发 dispose 流程
-panel.active = true                 // 默认 true；测试 toggleMode 多面板分支时可置 false
-```
-
----
-
-## 测试文件清单
-
-### 顶层
-
-- `test/manifest.test.ts` — 47 项断言：验证 `package.json` 的命令、菜单、快捷键、激活事件、`customEditors` 配置以及关键文件存在性
-- `test/setup.ts` — 仅导入 `@testing-library/jest-dom/vitest`
-
-### 扩展宿主（`src/__tests__/`）
-
-| 文件 | 覆盖 |
-|------|------|
-| `extension.test.ts` | `activate()` 注册 3 个 Custom Editor、3 个 CodeLens、5 个命令；命令参数与 ViewColumn；`deactivate()` 不抛错 |
-| `customTextEditorProvider.test.ts` | 基本 `resolveCustomTextEditor` 流程、`ready` 推送、`edit` 回写、`toggleMode`、`onDidChangeTextDocument` 同步 |
-| `customTextEditorProvider-branches.test.ts` | 内容去重、跨文档变更隔离、`applyEdit` 失败路径、`save` 失败路径、`dispose` 清理、未知消息容错、`toggleMode` 多面板 |
-| `codeLensProvider.test.ts` | 三种 fileType 的 CodeLens 标题与命令绑定 |
-| `editorTypes.test.ts` | `inferFileType` 各扩展名 + 大小写不敏感；`getCustomEditorViewType`；常量映射 |
-| `textDocumentEdits.test.ts` | `fast-diff` 生成 insert/delete/replace；无变化时直接返回 true |
-| `utils.test.ts` | `getNonce` 长度/字符集；`buildPreviewHtml` 含 CSP/scriptUri/cssUri/nonce；`resolveImageSrc` 各分支 |
-| `webviewHost.test.ts` | `configureEditorWebview` 设置 `enableScripts` / `localResourceRoots`，注入 HTML；无 workspaceFolders 时降级；`getResourceBaseUri` |
-
-### Webview（`webview/__tests__/`）
-
-| 文件 | 覆盖 |
-|------|------|
-| `Toolbar.test.tsx` | 两个模式按钮、active 样式、onModeChange 回调 |
-| `ThemeContext.test.tsx` | 主题上下文订阅 `<html>` 类变化 |
-| `messageBus.test.ts` | `subscribe` 注册/取消、按 type 分发、清理空集合 |
-| `previewStyles.test.ts` | 预览结构性 className 断言 |
-| `markdownPreviewConfig.test.ts` | `CODE_HIGHLIGHT_THEMES` 常量 |
-| `hooks.test.tsx` | `useVsCodeMessages` 接收 `update`、`useMarkdownComponents` 组件映射 |
-| `saveShortcut.test.tsx` | Cmd/Ctrl+S 拦截并 postMessage |
-| `useCodeBlockSelectAll.test.tsx` | 两阶段全选（普通/textarea/外部元素） |
-| `useSearch.test.ts` | open/close/toggle 选项、DOM 搜索 matchCount |
-| `useSearch-nav.test.tsx` | findNext/findPrev 循环；toggle 后重搜索；preview/wysiwyg 容器；ref 为空降级 |
-| `domHighlighter.test.ts` | findMatches 各模式（caseSensitive/wholeWord/useRegex/无效正则） |
-| `domHighlighter-extra.test.ts` | applyHighlights / clearHighlights / scrollToMatch（mock CSS.highlights） |
-| `regexUtils.test.ts` | `escapeRegExp` 全部特殊字符；`buildSearchRegex` 各 flag 组合 |
-| `vscodeApi.test.ts` | `getVsCodeApi` 单例缓存与降级 |
-| `codeHighlighter.test.ts` | 导出非空 |
-| `SearchWidget.test.tsx` | 搜索面板交互 |
-| `MermaidBlock.test.tsx` | Mermaid 渲染、错误、复制源码 |
-| `CellRenderer.test.tsx` | CSV 单元格渲染 |
-| `csv-parser.test.ts` | CSV 解析 + 序列化（含引号/换行） |
-| `csv-history.test.ts` | `UndoRedoStack` push/undo/redo/clear/MAX_HISTORY |
-| `csv-selection.test.ts` | `getSelectionRange` / `isCellInSelection` 工具函数 |
-| `useSelectionHook.test.tsx` | `useSelection` 全套：select/drag/move/extend/边界夹紧 |
-| `csv-store.test.ts` | `useCsvStore` 主要 reducer 动作 |
-| `csv-store-branches.test.ts` | UNDO/REDO、REPLACE_*、MOVE_*、PASTE_CELLS 扩展行、DELETE 限制等分支 |
-| `useCopyPaste.test.tsx` | copy/paste/cut 通过 `ClipboardEvent` 派发；输入框跳过；sortedToSourceMap 映射 |
-| `useKeyboard.test.tsx` | Undo/Redo/Arrow/Tab/Enter/F2/Delete/Escape/单字符进入编辑 |
-
----
-
-## 运行测试
+## 命令
 
 ```bash
-# 一次性运行全部测试
 npm test
-
-# 监听模式（开发时）
 npm run test:watch
-
-# 覆盖率报告
 npm run test:coverage
-
-# 运行单个文件
 npx vitest run webview/__tests__/csv-store.test.ts
-
-# 按名称过滤
 npx vitest run -t "REPLACE_ALL"
 ```
 
----
+## Vitest 配置
 
-## 测试策略
+`vitest.config.ts` 的测试配置是：
 
-### 分层
-
+```ts
+{
+  globals: true,
+  environment: 'jsdom',
+  include: ['src/**/*.test.ts', 'webview/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
+  setupFiles: ['./test/setup.ts'],
+  css: false,
+  alias: {
+    vscode: new URL('./test/__mocks__/vscode.ts', import.meta.url).pathname,
+  },
+}
 ```
-┌─────────────────────────────────┐
-│  清单完整性测试（防止发布配置缺失）  │
-├─────────────────────────────────┤
-│  Extension Host 单元测试           │
-│  （命令、CustomEditor、CodeLens、增量编辑） │
-├─────────────────────────────────┤
-│  Webview Hook / 组件测试            │
-│  （消息总线、CSV 状态、搜索、Hook 交互） │
-└─────────────────────────────────┘
-```
 
-### Mock 策略
+测试只匹配 `src/`、`webview/` 和 `test/` 下的测试文件。CSS 在测试中不解析。`vscode` import 会被重定向到 `test/__mocks__/vscode.ts`。
 
-| 被 Mock 的模块 | 原因 |
-|---------------|------|
-| `vscode` | VS Code API 仅在扩展宿主进程可用 |
-| CSS 文件（`css: false`） | jsdom 不解析 CSS |
-| `acquireVsCodeApi` | 通过 `vi.stubGlobal` 在 Webview 测试中注入 |
+## VS Code Mock
 
-### 最佳实践
+`test/__mocks__/vscode.ts` 模拟当前扩展宿主代码用到的 VS Code API，包括 URI、Range、Position、CodeLens、ThemeIcon、WorkspaceEdit、window、workspace、commands、languages 和测试专用的 `createMockPanel()`。
 
-1. **测试行为而非实现** — 验证命令被注册、消息被推送，而非内部数据结构
-2. **取出 mock handler 直接调用** — `panel.webview.onDidReceiveMessage.mock.calls[0][0]` 拿到注册的 handler，绕开真实事件循环
-3. **React Hook 测试用 `renderHook`** — 避免给每个 Hook 写宿主组件
-4. **每个测试前清理** — 使用 `beforeEach(() => vi.clearAllMocks())` 或重置 DOM `document.body.innerHTML = ''`
+`createMockPanel()` 暴露可断言的 `webview.postMessage`、`webview.onDidReceiveMessage`、`onDidDispose` 和 `_disposeCallback()`。Custom editor 测试通常直接取出 mock 注册的 handler 并调用它。
 
----
+## 顶层测试
 
-## 相关文档
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `test/manifest.test.ts` | `package.json` 的命令、菜单、快捷键、激活事件、custom editor、脚本和关键文件存在性 |
+| `test/setup.ts` | 导入 `@testing-library/jest-dom/vitest` |
 
-- [构建与开发](./Build-and-Development.md) — 开发环境搭建
-- [API 参考](./API-Reference.md) — 被测试的 API
-- [贡献指南](./Contributing.md) — 提交代码前的测试要求
+## Extension Host 测试
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `src/__tests__/extension.test.ts` | `activate()` 注册 3 个 Custom Editor、3 个 CodeLens、5 个命令；命令调用的 view column；`deactivate()` |
+| `src/__tests__/customTextEditorProvider.test.ts` | ready 首帧推送、空文件推送、edit 回写、save 回写、文档变化同步、toggleMode |
+| `src/__tests__/customTextEditorProvider-branches.test.ts` | 去重、跨文档隔离、50ms 批量推送、ready/dispose 清 timer、apply/save 失败、未知消息、非 active panel |
+| `src/__tests__/codeLensProvider.test.ts` | 三种 fileType 的 CodeLens 标题、命令和参数 |
+| `src/__tests__/editorTypes.test.ts` | 扩展名推断、大小写、viewType 映射 |
+| `src/__tests__/textDocumentEdits.test.ts` | `fast-diff` insert/delete/replace、无变化直接成功 |
+| `src/__tests__/utils.test.ts` | nonce、HTML/CSP、图片路径解析 |
+| `src/__tests__/webviewHost.test.ts` | Webview options、localResourceRoots、资源 URI、HTML 注入和 baseUri |
+
+## Webview 通用测试
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `webview/__tests__/App.test.tsx` | 首次 update 前加载态，Markdown/CSV/Excalidraw fileType 路由 |
+| `webview/__tests__/Toolbar.test.tsx` | Preview/WYSIWYG 按钮和回调 |
+| `webview/__tests__/ThemeContext.test.tsx` | body 主题类监听 |
+| `webview/__tests__/hooks.test.tsx` | `useVsCodeMessages()` 和 `useMarkdownComponents()` |
+| `webview/__tests__/messageBus.test.ts` | 订阅、取消订阅、按 type 分发 |
+| `webview/__tests__/vscodeApi.test.ts` | `acquireVsCodeApi()` 缓存和缺失降级 |
+| `webview/__tests__/saveShortcut.test.tsx` | `Ctrl/Cmd+S` 保存消息 |
+| `webview/__tests__/previewStyles.test.ts` | Markdown/Milkdown/样式的结构性源码断言 |
+
+## Markdown 相关测试
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `webview/__tests__/codeHighlighter.test.ts` | Shiki 插件、别名、plaintext 回退、异步 callback、缓存、全部内置语言 loader、加载失败回退 |
+| `webview/__tests__/MermaidBlock.test.tsx` | Mermaid 渲染、源码切换、复制、全屏、缩放、滚轮/拖拽、错误态、IntersectionObserver、SVG 缓存 |
+| `webview/__tests__/markdownPreviewConfig.test.ts` | `CODE_HIGHLIGHT_THEMES` 常量 |
+| `webview/__tests__/useCodeBlockSelectAll.test.tsx` | 代码块内两阶段全选 |
+
+## 搜索测试
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `webview/__tests__/regexUtils.test.ts` | 正则转义、大小写、整词、正则模式和非法正则 |
+| `webview/__tests__/domHighlighter.test.ts` | DOM 文本匹配、大小写、整词、正则和空查询 |
+| `webview/__tests__/domHighlighter-extra.test.ts` | CSS Custom Highlights API、清理和滚动 |
+| `webview/__tests__/SearchWidget.test.tsx` | 搜索 UI 控件 |
+| `webview/__tests__/useSearch.test.ts` | open/close/toggle、查询和匹配计数 |
+| `webview/__tests__/useSearch-nav.test.tsx` | findNext/findPrev、容器选择、模式切换后重搜 |
+
+## CSV 测试
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `webview/__tests__/csv-parser.test.ts` | CSV 解析、CRLF、引号、换行、序列化、normalize、parseAndSplit |
+| `webview/__tests__/csv-history.test.ts` | `UndoRedoStack`、redo 清理、容量限制 |
+| `webview/__tests__/csv-selection.test.ts` | 选区范围和单元格命中 |
+| `webview/__tests__/csv-store.test.ts` | reducer 主路径、排序、搜索、粘贴、序列化、undo/redo |
+| `webview/__tests__/csv-store-branches.test.ts` | 删除限制、替换、移动、结构性搜索刷新、SET_CELL 增量搜索、SET_DATA 搜索刷新 |
+| `webview/__tests__/CellRenderer.test.tsx` | 单元格渲染状态 |
+| `webview/__tests__/useSelectionHook.test.tsx` | 鼠标选择、拖选、移动和边界 |
+| `webview/__tests__/useKeyboard.test.tsx` | Undo/Redo、方向键、Tab、Enter、F2、Delete、Backspace、Escape、输入进入编辑 |
+| `webview/__tests__/useCopyPaste.test.tsx` | copy/paste/cut、输入控件跳过、TSV、sortedToSourceMap |
+
+## 覆盖率剩余缺口
+
+剩余未覆盖主要集中在测试 Mock 自身、Mermaid 交互的少数浏览器异常分支、`useCodeBlockSelectAll()` 的选择边界、以及无法通过正常输入触达的 CSV parser 防御分支。这些缺口不影响当前核心业务路径的测试覆盖。

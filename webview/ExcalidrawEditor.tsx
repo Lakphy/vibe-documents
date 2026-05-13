@@ -2,6 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { useIsDark } from './ThemeContext';
 import { getVsCodeApi } from './vscodeApi';
 import { useSaveContentProvider } from './saveShortcut';
+import '@excalidraw/excalidraw/index.css';
 
 const ExcalidrawComponent = lazy(() =>
   import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw }))
@@ -16,6 +17,7 @@ export function ExcalidrawEditor({ content }: ExcalidrawEditorProps) {
   const onChangeTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastSentRef = useRef<string>(content);
   const pendingContentRef = useRef<string | undefined>(undefined);
+  const pendingSceneRef = useRef<{ elements: readonly any[]; appState: any; files: any } | undefined>(undefined);
   const externalVersionRef = useRef(0);
 
   useEffect(() => {
@@ -49,18 +51,21 @@ export function ExcalidrawEditor({ content }: ExcalidrawEditorProps) {
   ), []);
 
   const handleChange = useCallback((elements: readonly any[], appState: any, files: any) => {
-    pendingContentRef.current = serializeScene(elements, appState, files);
+    pendingSceneRef.current = { elements, appState, files };
+    pendingContentRef.current = undefined;
 
     if (onChangeTimerRef.current) {
       clearTimeout(onChangeTimerRef.current);
     }
 
     onChangeTimerRef.current = setTimeout(() => {
-      const data = pendingContentRef.current;
+      const scene = pendingSceneRef.current;
+      const data = pendingContentRef.current ?? (scene ? serializeScene(scene.elements, scene.appState, scene.files) : undefined);
       if (typeof data !== 'string') return;
       if (data === lastSentRef.current) return;
       lastSentRef.current = data;
       pendingContentRef.current = undefined;
+      pendingSceneRef.current = undefined;
       getVsCodeApi()?.postMessage({ type: 'edit', content: data });
     }, 300);
   }, [serializeScene]);
@@ -71,8 +76,10 @@ export function ExcalidrawEditor({ content }: ExcalidrawEditorProps) {
       onChangeTimerRef.current = undefined;
     }
 
-    const contentToSave = pendingContentRef.current ?? lastSentRef.current;
+    const scene = pendingSceneRef.current;
+    const contentToSave = pendingContentRef.current ?? (scene ? serializeScene(scene.elements, scene.appState, scene.files) : lastSentRef.current);
     pendingContentRef.current = undefined;
+    pendingSceneRef.current = undefined;
     lastSentRef.current = contentToSave;
     return contentToSave;
   });

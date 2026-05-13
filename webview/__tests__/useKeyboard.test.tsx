@@ -83,6 +83,20 @@ describe('useKeyboard', () => {
     expect(moveSelection).toHaveBeenCalledWith(sel, 'right', true);
   });
 
+  it('ArrowUp 向上移动选区', () => {
+    const sel: Selection = { start: { row: 1, col: 0 }, end: { row: 1, col: 0 } };
+    const { moveSelection, container } = setup(makeState({ selection: sel }));
+    dispatchKey(container, { key: 'ArrowUp' });
+    expect(moveSelection).toHaveBeenCalledWith(sel, 'up', false);
+  });
+
+  it('ArrowLeft 向左移动选区', () => {
+    const sel: Selection = { start: { row: 0, col: 1 }, end: { row: 0, col: 1 } };
+    const { moveSelection, container } = setup(makeState({ selection: sel }));
+    dispatchKey(container, { key: 'ArrowLeft' });
+    expect(moveSelection).toHaveBeenCalledWith(sel, 'left', false);
+  });
+
   it('Tab 向右移动', () => {
     const sel: Selection = { start: { row: 0, col: 0 }, end: { row: 0, col: 0 } };
     const { moveSelection, container } = setup(makeState({ selection: sel }));
@@ -119,6 +133,22 @@ describe('useKeyboard', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_CELL', row: 1, col: 1, value: '' });
   });
 
+  it('Backspace 清空选区并使用 sortedToSourceMap', () => {
+    const sel: Selection = { start: { row: 0, col: 1 }, end: { row: 0, col: 1 } };
+    const { dispatch, container } = setup(makeState({ selection: sel }), [1, 0]);
+    dispatchKey(container, { key: 'Backspace' });
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_CELL', row: 1, col: 1, value: '' });
+  });
+
+  it('没有选区时 Enter、F2、Delete 不派发编辑动作', () => {
+    const { dispatch, container } = setup(makeState({ selection: null }));
+    dispatchKey(container, { key: 'Enter' });
+    dispatchKey(container, { key: 'F2' });
+    dispatchKey(container, { key: 'Delete' });
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_EDITING_CELL' }));
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_CELL' }));
+  });
+
   it('Escape 清除选区和右键菜单', () => {
     const { dispatch, container } = setup(makeState());
     dispatchKey(container, { key: 'Escape' });
@@ -143,6 +173,13 @@ describe('useKeyboard', () => {
     const { dispatch, container } = setup(makeState({ selection: sel }));
     dispatchKey(container, { key: 'x' });
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_EDITING_CELL', cell: sel.end });
+  });
+
+  it('带控制键的单字符不会直接进入编辑模式', () => {
+    const sel: Selection = { start: { row: 0, col: 0 }, end: { row: 0, col: 0 } };
+    const { dispatch, container } = setup(makeState({ selection: sel }));
+    dispatchKey(container, { key: 'x', ctrlKey: true });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'SET_EDITING_CELL', cell: sel.end });
   });
 
   it('焦点在 INPUT 时跳过常规按键（除了 undo/redo）', () => {

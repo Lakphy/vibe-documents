@@ -26,6 +26,7 @@ export class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProv
     const fileType = inferFileType(document.uri.fsPath);
     let lastSentContent: string | undefined;
     let webviewMessageQueue: Promise<unknown> = Promise.resolve();
+    let pendingContentPost: ReturnType<typeof setTimeout> | undefined;
 
     this.panels.add(panel);
     panel.iconPath = new vscode.ThemeIcon('open-preview');
@@ -43,6 +44,16 @@ export class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProv
         baseUri: getResourceBaseUri(panel, document.uri),
         fileType,
       });
+    };
+
+    const scheduleDocumentContentPost = () => {
+      if (pendingContentPost !== undefined) {
+        clearTimeout(pendingContentPost);
+      }
+      pendingContentPost = setTimeout(() => {
+        pendingContentPost = undefined;
+        postDocumentContent();
+      }, 50);
     };
 
     const enqueueWebviewMessage = <T>(task: () => Promise<T>) => {
@@ -77,12 +88,16 @@ export class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProv
 
     const changeListener = vscode.workspace.onDidChangeTextDocument(event => {
       if (event.document.uri.toString() === resourceKey) {
-        postDocumentContent();
+        scheduleDocumentContentPost();
       }
     });
 
     const messageListener = panel.webview.onDidReceiveMessage(message => {
       if (message.type === 'ready') {
+        if (pendingContentPost !== undefined) {
+          clearTimeout(pendingContentPost);
+          pendingContentPost = undefined;
+        }
         postDocumentContent(true);
       } else if (message.type === 'edit' && typeof message.content === 'string') {
         return enqueueWebviewMessage(() => applyContentFromWebview(message.content));
@@ -93,6 +108,9 @@ export class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProv
     });
 
     panel.onDidDispose(() => {
+      if (pendingContentPost !== undefined) {
+        clearTimeout(pendingContentPost);
+      }
       this.panels.delete(panel);
       changeListener.dispose();
       messageListener.dispose();

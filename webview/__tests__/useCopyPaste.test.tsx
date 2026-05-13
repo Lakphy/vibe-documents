@@ -91,6 +91,13 @@ describe('useCopyPaste', () => {
     expect(clipboardData.getData('text/plain')).toBe('');
   });
 
+  it('copy 会跳过可视范围中不存在的行', () => {
+    const state = makeState({ selection: { start: { row: 0, col: 0 }, end: { row: 3, col: 1 } } });
+    const { container } = renderWithContainer(state, [['1', '2', '3']]);
+    const { clipboardData } = dispatchOn(container, 'copy');
+    expect(clipboardData.getData('text/plain')).toBe('1\t2');
+  });
+
   it('paste 派发 PASTE_CELLS', () => {
     const { container, dispatch } = renderWithContainer(makeState());
     dispatchOn(container, 'paste', 'X\tY\nZ\tW');
@@ -114,6 +121,14 @@ describe('useCopyPaste', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  it('焦点在 TEXTAREA 时 paste 不拦截', () => {
+    const { container, dispatch } = renderWithContainer(makeState());
+    const textarea = document.createElement('textarea');
+    container.appendChild(textarea);
+    dispatchOn(textarea, 'paste', 'X\tY');
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
   it('cut 既复制又清空所选单元格', () => {
     const { container, dispatch } = renderWithContainer(makeState());
     const { clipboardData } = dispatchOn(container, 'cut');
@@ -122,6 +137,22 @@ describe('useCopyPaste', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_CELL', row: 0, col: 1, value: '' });
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_CELL', row: 1, col: 0, value: '' });
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_CELL', row: 1, col: 1, value: '' });
+  });
+
+  it('selection 为 null 时 cut 跳过', () => {
+    const { container, dispatch } = renderWithContainer(makeState({ selection: null }));
+    const { event } = dispatchOn(container, 'cut');
+    expect(event.defaultPrevented).toBe(false);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('焦点在 INPUT 时 cut 不拦截', () => {
+    const { container, dispatch } = renderWithContainer(makeState());
+    const input = document.createElement('input');
+    container.appendChild(input);
+    const { event } = dispatchOn(input, 'cut');
+    expect(event.defaultPrevented).toBe(false);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it('paste 使用 sortedToSourceMap 解析目标源行', () => {

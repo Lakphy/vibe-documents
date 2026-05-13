@@ -209,6 +209,7 @@ describe('项目文件完整性', () => {
     'src/utils.ts',
     'src/codeLensProvider.ts',
     'webview/App.tsx',
+    'webview/MarkdownPreview.tsx',
     'webview/index.tsx',
     'webview/hooks.tsx',
     'webview/Toolbar.tsx',

@@ -21,7 +21,7 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function computeSearchMatches(headers: string[], rows: string[][], query: string): CellPosition[] {
+function computeSearchMatches(rows: string[][], query: string): CellPosition[] {
   if (!query) return [];
   const lower = query.toLowerCase();
   const matches: CellPosition[] = [];
@@ -33,6 +33,59 @@ function computeSearchMatches(headers: string[], rows: string[][], query: string
     }
   }
   return matches;
+}
+
+function cellMatches(value: string, lowerQuery: string) {
+  return value.toLowerCase().includes(lowerQuery);
+}
+
+function sortCellPositions(a: CellPosition, b: CellPosition) {
+  return a.row === b.row ? a.col - b.col : a.row - b.row;
+}
+
+function insertSortedCellPosition(matches: CellPosition[], position: CellPosition) {
+  const next = [...matches];
+  let low = 0;
+  let high = next.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (sortCellPositions(next[mid], position) < 0) low = mid + 1;
+    else high = mid;
+  }
+  next.splice(low, 0, position);
+  return next;
+}
+
+function clampSearchIndex(matches: CellPosition[], currentMatchIndex: number) {
+  if (matches.length === 0) return -1;
+  if (currentMatchIndex < 0) return 0;
+  return Math.min(currentMatchIndex, matches.length - 1);
+}
+
+function refreshSearchMatches(search: SearchState, rows: string[][]): SearchState {
+  if (!search.query) return search;
+  const matches = computeSearchMatches(rows, search.query);
+  return {
+    ...search,
+    matches,
+    currentMatchIndex: clampSearchIndex(matches, search.currentMatchIndex),
+  };
+}
+
+function updateCellSearchMatches(search: SearchState, row: number, col: number, value: string): SearchState {
+  if (!search.query) return search;
+
+  const lowerQuery = search.query.toLowerCase();
+  const withoutCell = search.matches.filter(match => match.row !== row || match.col !== col);
+  const matches = cellMatches(value, lowerQuery)
+    ? insertSortedCellPosition(withoutCell, { row, col })
+    : withoutCell;
+
+  return {
+    ...search,
+    matches,
+    currentMatchIndex: clampSearchIndex(matches, search.currentMatchIndex),
+  };
 }
 
 function csvReducer(state: CsvState, action: CsvAction): CsvState {
@@ -49,7 +102,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
         columnWidths: widths,
         selection: null,
         editingCell: null,
-        search: { ...state.search, matches: computeSearchMatches(action.headers, action.rows, state.search.query) },
+        search: refreshSearchMatches(state.search, action.rows),
       };
     }
 
@@ -57,10 +110,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       const newRows = state.rows.map((r, i) =>
         i === action.row ? r.map((c, j) => (j === action.col ? action.value : c)) : r
       );
-      const newSearch = {
-        ...state.search,
-        matches: computeSearchMatches(state.headers, newRows, state.search.query),
-      };
+      const newSearch = updateCellSearchMatches(state.search, action.row, action.col, action.value);
       return { ...state, rows: newRows, search: newSearch };
     }
 
@@ -68,13 +118,13 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       const newRow = new Array(state.headers.length).fill('');
       const newRows = [...state.rows];
       newRows.splice(action.at, 0, newRow);
-      return { ...state, rows: newRows };
+      return { ...state, rows: newRows, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'DELETE_ROW': {
       if (state.rows.length <= 1) return state;
       const newRows = state.rows.filter((_, i) => i !== action.at);
-      return { ...state, rows: newRows, editingCell: null };
+      return { ...state, rows: newRows, editingCell: null, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'INSERT_COL': {
@@ -87,14 +137,14 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       });
       const widths = { ...state.columnWidths };
       widths[action.at] = DEFAULT_COL_WIDTH;
-      return { ...state, headers: newHeaders, rows: newRows, columnWidths: widths };
+      return { ...state, headers: newHeaders, rows: newRows, columnWidths: widths, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'DELETE_COL': {
       if (state.headers.length <= 1) return state;
       const newHeaders = state.headers.filter((_, i) => i !== action.at);
       const newRows = state.rows.map(r => r.filter((_, i) => i !== action.at));
-      return { ...state, headers: newHeaders, rows: newRows, editingCell: null };
+      return { ...state, headers: newHeaders, rows: newRows, editingCell: null, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'SET_SELECTION':
@@ -112,7 +162,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
     case 'SET_SEARCH': {
       const newSearch = { ...state.search, ...action.search };
       if (action.search.query !== undefined) {
-        newSearch.matches = computeSearchMatches(state.headers, state.rows, newSearch.query);
+        newSearch.matches = computeSearchMatches(state.rows, newSearch.query);
         newSearch.currentMatchIndex = newSearch.matches.length > 0 ? 0 : -1;
       }
       return { ...state, search: newSearch };
@@ -131,7 +181,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       const newRows = state.rows.map((r, i) =>
         i === pos.row ? r.map((c, j) => (j === pos.col ? newValue : c)) : r
       );
-      const newMatches = computeSearchMatches(state.headers, newRows, state.search.query);
+      const newMatches = computeSearchMatches(newRows, state.search.query);
       const newIndex = Math.min(currentMatchIndex, newMatches.length - 1);
       return {
         ...state,
@@ -170,7 +220,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
         }
         newRows[targetRow] = row;
       }
-      return { ...state, rows: newRows };
+      return { ...state, rows: newRows, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'MOVE_ROW': {
@@ -179,7 +229,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       const newRows = [...state.rows];
       const [moved] = newRows.splice(from, 1);
       newRows.splice(to, 0, moved);
-      return { ...state, rows: newRows, sort: { columnIndex: -1, direction: null }, editingCell: null };
+      return { ...state, rows: newRows, sort: { columnIndex: -1, direction: null }, editingCell: null, search: refreshSearchMatches(state.search, newRows) };
     }
 
     case 'MOVE_COL': {
@@ -202,7 +252,7 @@ function csvReducer(state: CsvState, action: CsvAction): CsvState {
       oldWidths.splice(to, 0, movedW);
       const newWidths: Record<number, number> = {};
       oldWidths.forEach((w, i) => { newWidths[i] = w; });
-      return { ...state, headers: newHeaders, rows: newRows, columnWidths: newWidths, editingCell: null };
+      return { ...state, headers: newHeaders, rows: newRows, columnWidths: newWidths, editingCell: null, search: refreshSearchMatches(state.search, newRows) };
     }
 
     default:

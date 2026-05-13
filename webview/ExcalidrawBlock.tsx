@@ -1,5 +1,6 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useMemo, lazy, Suspense } from 'react';
 import { useIsDark } from './ThemeContext';
+import '@excalidraw/excalidraw/index.css';
 
 const ExcalidrawComponent = lazy(() =>
   import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw }))
@@ -15,22 +16,23 @@ interface ExcalidrawRendererProps {
 /** 预览模式：只读 Excalidraw 渲染（用于 Streamdown） */
 export function ExcalidrawRenderer({ code, isIncomplete }: ExcalidrawRendererProps) {
   const isDark = useIsDark();
-  const [error, setError] = useState<string | null>(null);
 
-  const sceneData = useMemo(() => {
+  const { sceneData, error } = useMemo(() => {
     try {
       const parsed = JSON.parse(code);
       return {
-        elements: parsed.elements || [],
-        appState: {
-          ...parsed.appState,
-          viewBackgroundColor: 'transparent',
+        sceneData: {
+          elements: parsed.elements || [],
+          appState: {
+            ...parsed.appState,
+            viewBackgroundColor: 'transparent',
+          },
+          files: parsed.files || {},
         },
-        files: parsed.files || {},
+        error: null,
       };
     } catch {
-      setError('Invalid Excalidraw JSON');
-      return null;
+      return { sceneData: null, error: 'Invalid Excalidraw JSON' };
     }
   }, [code]);
 

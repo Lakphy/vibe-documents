@@ -43,11 +43,13 @@ interface MermaidInteractiveDiagramProps {
 }
 
 let mermaidPreviewId = 0;
+let lastMermaidConfigKey = '';
 const MIN_MERMAID_SCALE = 0.25;
 const MAX_MERMAID_SCALE = 4;
 const MERMAID_ZOOM_STEP = 1.2;
 const TOUCHPAD_PAN_DELTA_LIMIT = 40;
 const DEFAULT_MERMAID_TRANSFORM: MermaidTransform = { x: 0, y: 0, scale: 1 };
+const renderedMermaidCache = new Map<string, string>();
 
 function clampMermaidScale(scale: number) {
   return Math.min(MAX_MERMAID_SCALE, Math.max(MIN_MERMAID_SCALE, Number(scale.toFixed(3))));
@@ -126,10 +128,14 @@ export function MermaidBlock({ code, config }: MermaidBlockProps) {
   const [diagramTransform, setDiagramTransform] = useState<MermaidTransform>(DEFAULT_MERMAID_TRANSFORM);
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
+  const [shouldRender, setShouldRender] = useState(() => typeof IntersectionObserver === 'undefined');
+  const blockRef = useRef<HTMLDivElement>(null);
   const copiedTimer = useRef<number | undefined>(undefined);
   const dragState = useRef<MermaidDragState | null>(null);
 
   const normalizedCode = useMemo(() => code.trim(), [code]);
+  const configKey = useMemo(() => JSON.stringify(config ?? {}), [config]);
+  const renderCacheKey = useMemo(() => `${configKey}\n${normalizedCode}`, [configKey, normalizedCode]);
   const diagramTransformStyle = useMemo(
     () => ({
       transform: `translate(${formatTransformNumber(diagramTransform.x)}px, ${formatTransformNumber(diagramTransform.y)}px) scale(${formatTransformNumber(diagramTransform.scale)})`,
@@ -138,6 +144,23 @@ export function MermaidBlock({ code, config }: MermaidBlockProps) {
   );
 
   useEffect(() => {
+    if (shouldRender) return undefined;
+    const block = blockRef.current;
+    if (!block) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setShouldRender(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '300px' });
+
+    observer.observe(block);
+    return () => observer.disconnect();
+  }, [shouldRender]);
+
+  useEffect(() => {
+    if (!shouldRender) return undefined;
     let cancelled = false;
 
     async function renderDiagram() {
@@ -147,17 +170,29 @@ export function MermaidBlock({ code, config }: MermaidBlockProps) {
         return;
       }
 
+      const cachedSvg = renderedMermaidCache.get(renderCacheKey);
+      if (cachedSvg) {
+        setError('');
+        setSvg(cachedSvg);
+        return;
+      }
+
       try {
         setError('');
-        mermaidLib.initialize({
+        const mermaidConfig: MermaidConfig = {
           startOnLoad: false,
           securityLevel: 'strict',
           fontFamily: 'monospace',
           suppressErrorRendering: true,
           ...config,
-        });
+        };
+        if (configKey !== lastMermaidConfigKey) {
+          mermaidLib.initialize(mermaidConfig);
+          lastMermaidConfigKey = configKey;
+        }
         const id = `vibe-mermaid-${++mermaidPreviewId}`;
         const result = await mermaidLib.render(id, normalizedCode);
+        renderedMermaidCache.set(renderCacheKey, result.svg);
         if (!cancelled) setSvg(result.svg);
       } catch (err) {
         if (!cancelled) {
@@ -172,7 +207,7 @@ export function MermaidBlock({ code, config }: MermaidBlockProps) {
     return () => {
       cancelled = true;
     };
-  }, [config, normalizedCode]);
+  }, [config, configKey, normalizedCode, renderCacheKey, shouldRender]);
 
   useEffect(() => {
     if (isFullscreen && !svg) setIsFullscreen(false);
@@ -343,7 +378,7 @@ export function MermaidBlock({ code, config }: MermaidBlockProps) {
   };
 
   return (
-    <div className="mermaid-preview-block" data-streamdown="mermaid-block">
+    <div ref={blockRef} className="mermaid-preview-block" data-streamdown="mermaid-block">
       <div className="mermaid-preview-header">
         <span className="mermaid-preview-label">mermaid</span>
       </div>

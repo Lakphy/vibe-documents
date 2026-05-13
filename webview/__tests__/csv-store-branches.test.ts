@@ -175,6 +175,69 @@ describe('useCsvStore - branch coverage', () => {
     expect(result.current.state.contextMenu.targetCell).toEqual({ row: 0, col: 0 });
   });
 
+  it('SET_CELL 增量维护搜索匹配并夹紧当前索引', () => {
+    const { result } = renderHook(() => useCsvStore(''));
+    act(() => result.current.initFromContent('a,b\nfoo,x\nbar,y\nbaz,z'));
+    act(() => result.current.dispatch({ type: 'SET_SEARCH', search: { query: 'ba' } }));
+    act(() => result.current.dispatch({ type: 'SET_SEARCH', search: { currentMatchIndex: 1 } }));
+
+    act(() => result.current.dispatch({ type: 'SET_CELL', row: 1, col: 0, value: 'nope' }));
+
+    expect(result.current.state.search.matches).toEqual([{ row: 2, col: 0 }]);
+    expect(result.current.state.search.currentMatchIndex).toBe(0);
+
+    act(() => result.current.dispatch({ type: 'SET_CELL', row: 0, col: 1, value: 'BAX' }));
+
+    expect(result.current.state.search.matches).toEqual([
+      { row: 0, col: 1 },
+      { row: 2, col: 0 },
+    ]);
+  });
+
+  it('结构性编辑后根据最新行列重新计算搜索匹配', () => {
+    const { result } = renderHook(() => useCsvStore(''));
+    act(() => result.current.initFromContent('a,b\nkeep,target\nmove,no'));
+    act(() => result.current.dispatch({ type: 'SET_SEARCH', search: { query: 'target' } }));
+
+    act(() => result.current.dispatch({ type: 'INSERT_ROW', at: 0 }));
+    expect(result.current.state.search.matches).toEqual([{ row: 1, col: 1 }]);
+
+    act(() => result.current.dispatch({ type: 'DELETE_COL', at: 0 }));
+    expect(result.current.state.search.matches).toEqual([{ row: 1, col: 0 }]);
+
+    act(() => result.current.dispatch({
+      type: 'PASTE_CELLS',
+      startRow: 0,
+      startCol: 0,
+      data: [['target']],
+    }));
+    expect(result.current.state.search.matches).toEqual([
+      { row: 0, col: 0 },
+      { row: 1, col: 0 },
+    ]);
+
+    act(() => result.current.dispatch({ type: 'MOVE_ROW', from: 1, to: 0 }));
+    expect(result.current.state.search.matches).toEqual([
+      { row: 0, col: 0 },
+      { row: 1, col: 0 },
+    ]);
+  });
+
+  it('SET_DATA 会保留搜索词并刷新外部内容中的匹配', () => {
+    const { result } = renderHook(() => useCsvStore(''));
+    act(() => result.current.initFromContent('a,b\nold,value'));
+    act(() => result.current.dispatch({ type: 'SET_SEARCH', search: { query: 'new' } }));
+    expect(result.current.state.search.matches).toEqual([]);
+
+    act(() => result.current.initFromContent('a,b\nnew,value\nother,new'));
+
+    expect(result.current.state.search.matches).toEqual([
+      { row: 0, col: 0 },
+      { row: 1, col: 1 },
+    ]);
+    expect(result.current.state.search.currentMatchIndex).toBe(0);
+  });
+
   it('排序数字列时空值视为字符串排序', () => {
     const { result } = renderHook(() => useCsvStore(''));
     act(() => result.current.initFromContent('h\n10\n\n5'));

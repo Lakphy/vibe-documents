@@ -14,16 +14,18 @@ interface TextSegment {
 
 function collectTextSegments(root: Element): { text: string; segments: TextSegment[] } {
   const segments: TextSegment[] = [];
-  let text = '';
+  const chunks: string[] = [];
+  let textLength = 0;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node: Text | null;
   while ((node = walker.nextNode() as Text | null)) {
     const len = node.data.length;
     if (len === 0) continue;
-    segments.push({ node, start: text.length, length: len });
-    text += node.data;
+    segments.push({ node, start: textLength, length: len });
+    chunks.push(node.data);
+    textLength += len;
   }
-  return { text, segments };
+  return { text: chunks.join(''), segments };
 }
 
 function mapToRanges(from: number, to: number, segments: TextSegment[]): Range[] {

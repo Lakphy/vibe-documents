@@ -127,6 +127,7 @@ describe('VibeCustomTextEditorProvider', () => {
   });
 
   it('TextDocument 变化后同步更新 webview', async () => {
+    vi.useFakeTimers();
     const uri = vscode.Uri.file('/test/file.md');
     let content = '# Before';
     const document = createDocument(uri, () => content);
@@ -137,6 +138,7 @@ describe('VibeCustomTextEditorProvider', () => {
 
     content = '# External Change';
     documentChangeHandler({ document } as any);
+    vi.advanceTimersByTime(50);
 
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -144,6 +146,7 @@ describe('VibeCustomTextEditorProvider', () => {
         content: '# External Change',
       })
     );
+    vi.useRealTimers();
   });
 
   it('toggleMode 向当前 active custom editor 发送消息', async () => {
