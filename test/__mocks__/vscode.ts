@@ -27,6 +27,7 @@ const createMockDisposable = () => ({ dispose: vi.fn() });
 const createMockWebview = () => ({
   html: '',
   cspSource: 'https://mock-csp-source',
+  options: undefined as any,
   asWebviewUri: vi.fn((uri: any) => ({
     ...uri,
     toString: () => `https://webview-uri${uri.path || uri.fsPath}`,
@@ -63,6 +64,7 @@ export const window = {
     panel.title = title;
     return panel;
   }),
+  registerCustomEditorProvider: vi.fn((_viewType: string, _provider: any, _options?: any) => createMockDisposable()),
   activeTextEditor: undefined as any,
   showErrorMessage: vi.fn(),
   showInformationMessage: vi.fn(),
@@ -79,6 +81,7 @@ export const workspace = {
   openTextDocument: vi.fn().mockResolvedValue({
     getText: () => '# Test Markdown\n\nHello world',
     uri: Uri.file('/test/file.md'),
+    fileName: '/test/file.md',
     isDirty: false,
     save: vi.fn().mockResolvedValue(true),
   }),
@@ -139,6 +142,7 @@ export const commands = {
   registerCommand: vi.fn((command: string, callback: (...args: any[]) => any) => {
     return { command, callback, dispose: vi.fn() };
   }),
+  executeCommand: vi.fn().mockResolvedValue(undefined),
 };
 
 export const languages = {

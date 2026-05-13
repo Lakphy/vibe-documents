@@ -60,7 +60,10 @@
 vibe-documents/
 ├── src/                        # 扩展宿主代码 (Node.js)
 │   ├── extension.ts            # 扩展入口，命令注册
-│   ├── previewProvider.ts      # Webview 面板管理与双向通信
+│   ├── customTextEditorProvider.ts # Custom Text Editor 管理与双向通信
+│   ├── editorTypes.ts          # 文件类型与 viewType 映射
+│   ├── textDocumentEdits.ts    # 增量 WorkspaceEdit 生成
+│   ├── webviewHost.ts          # Webview HTML 与资源配置
 │   ├── codeLensProvider.ts     # CodeLens（文件顶部预览按钮）
 │   ├── utils.ts                # 工具函数（nonce 生成、HTML 模板、图片路径）
 │   └── __tests__/              # 扩展层单元测试

@@ -215,6 +215,7 @@ export function VirtualGrid({ state, sortedRows, sortedToSourceMap, dispatch }: 
                       height={ROW_HEIGHT}
                       isSelected={isCellInSelection(r, c, selection)}
                       isActive={selection?.end.row === r && selection?.end.col === c}
+                      isEditing={editingCell?.row === r && editingCell?.col === c}
                       isSearchMatch={searchMatchSet.has(`${r},${c}`)}
                       isCurrentMatch={currentMatch !== null && currentMatch.row === r && currentMatch.col === c}
                       onMouseDown={handleCellMouseDown}

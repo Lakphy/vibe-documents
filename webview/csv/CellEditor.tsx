@@ -57,6 +57,12 @@ export function CellEditor({ cell, sourceRow, value, width, height, left, top, d
     <textarea
       ref={inputRef}
       className="csv-cell-editor"
+      data-csv-cell-editor="true"
+      aria-label={`Edit cell ${cell.row + 1}, ${cell.col + 1}`}
+      autoCapitalize="off"
+      autoComplete="off"
+      autoCorrect="off"
+      spellCheck={false}
       style={{
         position: 'absolute',
         left,

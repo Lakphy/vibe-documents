@@ -51,7 +51,10 @@ npm run dev
 vibe-documents/
 ├── src/                     # Extension Host（Node.js）
 │   ├── extension.ts         # 入口：命令注册
-│   ├── previewProvider.ts   # 面板管理与通信
+│   ├── customTextEditorProvider.ts # Custom Text Editor 管理与通信
+│   ├── editorTypes.ts       # 文件类型与 viewType 映射
+│   ├── textDocumentEdits.ts # 增量编辑工具
+│   ├── webviewHost.ts       # Webview 宿主配置
 │   ├── utils.ts             # 工具函数
 │   └── __tests__/           # 单元测试
 ├── webview/                 # Webview UI（React）

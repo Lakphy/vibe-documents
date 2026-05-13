@@ -183,25 +183,23 @@ interface MilkdownEditorProps {
 
 ## 核心类
 
-### MarkdownPreviewProvider
+### VibeCustomTextEditorProvider
 
-Webview 面板管理器。
+Custom Text Editor 管理器，使用 VS Code 传入的 `TextDocument` 作为唯一文档模型。
 
 ```typescript
-class MarkdownPreviewProvider {
+class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(context: vscode.ExtensionContext)
 
-  // 显示/创建预览面板
-  showPreview(uri: vscode.Uri, column: vscode.ViewColumn): void
+  // VS Code 创建 custom editor 时调用
+  resolveCustomTextEditor(
+    document: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    token: vscode.CancellationToken
+  ): Promise<void>
 
-  // 切换当前活动面板的编辑模式
+  // 切换当前活动 custom editor 的编辑模式
   toggleMode(): void
-
-  // 获取当前打开的面板数量
-  getPanelCount(): number
-
-  // 检查指定 URI 是否已有面板
-  hasPanel(uri: string): boolean
 }
 ```
 

@@ -20,6 +20,9 @@
     "onLanguage:markdown",
     "onLanguage:csv",
     "onLanguage:excalidraw",
+    "onCustomEditor:vibeDocuments.markdownEditor",
+    "onCustomEditor:vibeDocuments.csvEditor",
+    "onCustomEditor:vibeDocuments.excalidrawEditor",
     "onCommand:vibeDocuments.showExcalidrawPreview",
     "onCommand:vibeDocuments.showCsvPreview"
   ],
@@ -97,6 +100,41 @@
         "aliases": [
           "Excalidraw"
         ]
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "vibeDocuments.markdownEditor",
+        "displayName": "Vibe Markdown Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "vibeDocuments.csvEditor",
+        "displayName": "Vibe CSV Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.csv"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "vibeDocuments.excalidrawEditor",
+        "displayName": "Vibe Excalidraw Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.excalidraw"
+          }
+        ],
+        "priority": "option"
       }
     ],
     "keybindings": [

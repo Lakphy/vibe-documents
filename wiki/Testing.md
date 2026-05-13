@@ -120,7 +120,9 @@ Mock 对象使用 `vi.fn()` 创建，支持：
 ```typescript
 const requiredFiles = [
   'tsconfig.json', 'webpack.config.js', '.gitignore', '.vscodeignore',
-  'src/extension.ts', 'src/previewProvider.ts', 'src/utils.ts',
+  'src/extension.ts', 'src/customTextEditorProvider.ts',
+  'src/editorTypes.ts', 'src/textDocumentEdits.ts',
+  'src/webviewHost.ts', 'src/utils.ts',
   'webview/App.tsx', 'webview/index.tsx', 'webview/hooks.tsx',
   'webview/Toolbar.tsx', 'webview/MilkdownEditor.tsx',
   'webview/styles/theme-bridge.css', 'webview/styles/cursor-markdown.css',

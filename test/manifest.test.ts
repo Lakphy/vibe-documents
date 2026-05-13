@@ -100,6 +100,45 @@ describe('package.json 声明完整性', () => {
     it('在打开 markdown 文件时激活', () => {
       expect(pkg.activationEvents).toContain('onLanguage:markdown');
     });
+
+    it('声明 custom editor 激活事件', () => {
+      expect(pkg.activationEvents).toContain('onCustomEditor:vibeDocuments.markdownEditor');
+      expect(pkg.activationEvents).toContain('onCustomEditor:vibeDocuments.csvEditor');
+      expect(pkg.activationEvents).toContain('onCustomEditor:vibeDocuments.excalidrawEditor');
+    });
+  });
+
+  describe('Custom Editors', () => {
+    const customEditors: Array<any> = pkg.contributes.customEditors;
+
+    it('声明 Markdown/CSV/Excalidraw custom editor', () => {
+      expect(customEditors.map(editor => editor.viewType)).toEqual(
+        expect.arrayContaining([
+          'vibeDocuments.markdownEditor',
+          'vibeDocuments.csvEditor',
+          'vibeDocuments.excalidrawEditor',
+        ])
+      );
+    });
+
+    it('所有 custom editor 都使用 option priority，不覆盖原生默认编辑器', () => {
+      customEditors.forEach(editor => {
+        expect(editor.priority).toBe('option');
+      });
+    });
+
+    it('custom editor selector 覆盖支持的文件类型', () => {
+      const markdown = customEditors.find(editor => editor.viewType === 'vibeDocuments.markdownEditor');
+      const csv = customEditors.find(editor => editor.viewType === 'vibeDocuments.csvEditor');
+      const excalidraw = customEditors.find(editor => editor.viewType === 'vibeDocuments.excalidrawEditor');
+
+      expect(markdown.selector).toEqual(expect.arrayContaining([
+        expect.objectContaining({ filenamePattern: '*.md' }),
+        expect.objectContaining({ filenamePattern: '*.markdown' }),
+      ]));
+      expect(csv.selector).toEqual([expect.objectContaining({ filenamePattern: '*.csv' })]);
+      expect(excalidraw.selector).toEqual([expect.objectContaining({ filenamePattern: '*.excalidraw' })]);
+    });
   });
 
   describe('核心依赖', () => {
@@ -163,7 +202,10 @@ describe('项目文件完整性', () => {
     '.gitignore',
     '.vscodeignore',
     'src/extension.ts',
-    'src/previewProvider.ts',
+    'src/customTextEditorProvider.ts',
+    'src/editorTypes.ts',
+    'src/textDocumentEdits.ts',
+    'src/webviewHost.ts',
     'src/utils.ts',
     'src/codeLensProvider.ts',
     'webview/App.tsx',

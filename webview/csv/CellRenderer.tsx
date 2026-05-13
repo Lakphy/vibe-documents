@@ -9,6 +9,7 @@ interface CellRendererProps {
   height: number;
   isSelected: boolean;
   isActive: boolean;
+  isEditing: boolean;
   isSearchMatch: boolean;
   isCurrentMatch: boolean;
   onMouseDown: (pos: CellPosition, e: React.MouseEvent) => void;
@@ -19,12 +20,13 @@ interface CellRendererProps {
 
 export const CellRenderer = memo(function CellRenderer({
   row, col, value, width, height,
-  isSelected, isActive, isSearchMatch, isCurrentMatch,
+  isSelected, isActive, isEditing, isSearchMatch, isCurrentMatch,
   onMouseDown, onMouseEnter, onDoubleClick, onContextMenu,
 }: CellRendererProps) {
   let className = 'csv-cell';
   if (isSelected) className += ' csv-cell--selected';
   if (isActive) className += ' csv-cell--active';
+  if (isEditing) className += ' csv-cell--editing';
   if (isSearchMatch) className += ' csv-cell--search-match';
   if (isCurrentMatch) className += ' csv-cell--current-match';
 
@@ -37,7 +39,7 @@ export const CellRenderer = memo(function CellRenderer({
       onDoubleClick={() => onDoubleClick({ row, col })}
       onContextMenu={e => { e.preventDefault(); onContextMenu({ row, col }, e); }}
     >
-      <span className="csv-cell-text">{value}</span>
+      <span className="csv-cell-text">{isEditing ? '' : value}</span>
     </div>
   );
 });

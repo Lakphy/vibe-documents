@@ -20,9 +20,9 @@
 │  │  └───────┬────────┘  │    │  │  │   Toolbar      │  │  │  │
 │  │          │            │    │  │  └────────────────┘  │  │  │
 │  │  ┌───────▼────────┐  │    │  │  ┌────────────────┐  │  │  │
-│  │  │previewProvider │  │◄──►│  │  │  Preview Mode  │  │  │  │
-│  │  │ 面板管理        │  │消息│  │  │  (Streamdown)  │  │  │  │
-│  │  │ 文件监听        │  │通信│  │  ├────────────────┤  │  │  │
+│  │  │CustomTextEditor│  │◄──►│  │  │  Preview Mode  │  │  │  │
+│  │  │ Provider       │  │消息│  │  │  (Streamdown)  │  │  │  │
+│  │  │ TextDocument   │  │通信│  │  ├────────────────┤  │  │  │
 │  │  │ 编辑同步        │  │    │  │  │  WYSIWYG Mode │  │  │  │
 │  │  └───────┬────────┘  │    │  │  │  (Milkdown)   │  │  │  │
 │  │          │            │    │  │  └────────────────┘  │  │  │
@@ -67,33 +67,30 @@
 
 ## 数据流
 
-### 文件 → 预览（只读方向）
+### 文件 → Webview（同步方向）
 
 ```
 文件变更
   │
-  ├─ FileSystemWatcher.onDidChange ──┐
-  │                                   ▼
-  └─ workspace.onDidChangeTextDocument ──► sendContent()
-                                              │
-                                              ▼
-                                     openTextDocument(uri)
-                                              │
-                                              ▼
-                                     panel.webview.postMessage({
-                                       type: 'update',
-                                       content: markdown,
-                                       baseUri: resourceBaseUri
-                                     })
-                                              │
-                                              ▼
-                                     Webview: window.message 事件
-                                              │
-                                       ┌──────┴──────┐
-                                       ▼             ▼
-                                   Preview:      Editor:
-                                   Streamdown    replaceAll()
-                                   重新渲染       更新内容
+  └─ workspace.onDidChangeTextDocument
+        │
+        ▼
+     CustomTextEditorProvider 持有的 TextDocument
+        │
+        ▼
+     panel.webview.postMessage({
+       type: 'update',
+       content,
+       baseUri,
+       fileType
+     })
+        │
+        ▼
+     Webview: window.message 事件
+        │
+  ┌─────┴─────┬─────────────┐
+  ▼           ▼             ▼
+Markdown    CSV        Excalidraw
 ```
 
 ### 编辑 → 文件（写回方向）
@@ -120,11 +117,11 @@
 
 编辑同步存在潜在的无限循环风险（Webview 编辑 → 文件更新 → 触发变更事件 → 推送回 Webview → 再次触发编辑事件...）。项目通过以下策略避免循环：
 
-1. **`isUpdatingFromWebview` 标志** — Extension Host 侧设置一个布尔标志，在处理 Webview 回写期间阻止 `sendContent()` 重复推送
-2. **`isExternalUpdate` 标志** — Webview 侧在接收外部更新时设置标志，阻止 Milkdown 的变更监听器触发回写
-3. **`lastSentContent` 去重** — Webview 侧缓存上次发送的内容，相同内容不重复发送
-4. **内容比对** — 推送前和接收时都做字符串相等性检查
-5. **定时器保护** — `isUpdatingFromWebview` 通过 `setTimeout(100ms)` 延迟重置，确保异步操作完成
+1. **Extension Host `lastSentContent` 去重** — 每个 custom editor panel 缓存上次推给 Webview 的内容，相同内容不重复推送
+2. **Webview `lastSentContent` 去重** — Markdown/CSV/Excalidraw 编辑器缓存上次发送的内容，相同内容不重复回写
+3. **`isExternalUpdate` 标志** — Webview 侧在接收外部更新时设置标志，阻止 Milkdown 的变更监听器触发回写
+4. **内容比对** — 推送前、接收时、保存前都做字符串相等性检查
+5. **消息队列** — Extension Host 串行处理 `edit` 和 `save` 消息，避免保存时和编辑回写交错
 
 ---
 
@@ -165,8 +162,11 @@ font-src ${cspSource} https: data:;
 
 ```
 extension.ts
-  └─► previewProvider.ts
-        └─► utils.ts (getNonce, buildPreviewHtml, resolveImageSrc)
+  ├─► customTextEditorProvider.ts
+  │     ├─► textDocumentEdits.ts
+  │     ├─► webviewHost.ts
+  │     └─► editorTypes.ts
+  └─► codeLensProvider.ts
 
 index.tsx (入口)
   └─► App.tsx

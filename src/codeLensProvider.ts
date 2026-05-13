@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
+import type { FileType } from './editorTypes';
 
-export type FileType = 'markdown' | 'excalidraw' | 'csv';
+export type { FileType } from './editorTypes';
 
 const FILE_TYPE_CONFIG: Record<FileType, { title: string; command: string }> = {
   markdown: {

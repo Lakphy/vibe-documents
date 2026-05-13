@@ -11,6 +11,7 @@ const defaultProps = {
   height: 30,
   isSelected: false,
   isActive: false,
+  isEditing: false,
   isSearchMatch: false,
   isCurrentMatch: false,
   onMouseDown: vi.fn(),
@@ -37,6 +38,12 @@ describe('CellRenderer', () => {
       const { container } = render(<CellRenderer {...defaultProps} isActive={true} />);
       const cell = container.firstChild as HTMLElement;
       expect(cell.className).toContain('csv-cell--active');
+    });
+
+    it('isEditing 时添加 csv-cell--editing', () => {
+      const { container } = render(<CellRenderer {...defaultProps} isEditing={true} />);
+      const cell = container.firstChild as HTMLElement;
+      expect(cell.className).toContain('csv-cell--editing');
     });
 
     it('isSearchMatch 时添加 csv-cell--search-match', () => {
@@ -66,6 +73,11 @@ describe('CellRenderer', () => {
     it('显示单元格文本', () => {
       render(<CellRenderer {...defaultProps} value="Hello World" />);
       expect(screen.getByText('Hello World')).toBeTruthy();
+    });
+
+    it('编辑态不渲染底层单元格文本', () => {
+      render(<CellRenderer {...defaultProps} value="Hidden while editing" isEditing={true} />);
+      expect(screen.queryByText('Hidden while editing')).toBeNull();
     });
 
     it('应用正确的宽高样式', () => {
