@@ -1,256 +1,331 @@
 # API 参考
 
-> 本文档列出 Vibe Documents 的所有公共 API，包括 VS Code 命令、消息协议和核心类型定义。
+> 本文档列出 Vibe Documents 的所有公共 API，包括 VS Code 命令、消息协议、核心类型与工具函数。
 
 ---
 
 ## VS Code 命令
 
-### vibeDocuments.showPreview
+扩展共注册 **5 个命令**：
 
-在当前编辑器列打开 Markdown 预览。
+### `vibeDocuments.showPreview`
+
+在当前编辑器列打开 Vibe Editor（按 `fileType` 自动路由到 markdown/csv/excalidraw viewType）。
 
 | 属性 | 值 |
 |------|-----|
 | 命令 ID | `vibeDocuments.showPreview` |
-| 显示标题 | Vibe: Open Markdown Preview |
+| 标题 | Vibe: Open Markdown Preview |
 | 图标 | `$(open-preview)` |
-| 参数 | `uri?: vscode.Uri` — 可选，目标文件 URI |
-| 触发位置 | 命令面板、资源管理器右键菜单 |
+| 参数 | `uri?: vscode.Uri` |
+| 内部行为 | `vscode.openWith(uri, viewType, { viewColumn: Active })` |
 
-参数为空时自动使用当前活动编辑器的文档 URI。两者都为空时不执行任何操作。
+### `vibeDocuments.showPreviewToSide`
 
-### vibeDocuments.showPreviewToSide
-
-在侧边列打开 Markdown 预览。
+在侧边列打开 Vibe Editor。
 
 | 属性 | 值 |
 |------|-----|
 | 命令 ID | `vibeDocuments.showPreviewToSide` |
-| 显示标题 | Vibe: Open Markdown Preview to the Side |
+| 标题 | Vibe: Open Markdown Preview to the Side |
 | 图标 | `$(open-preview)` |
 | 参数 | `uri?: vscode.Uri` |
-| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V` |
-| 触发条件 | `editorLangId == markdown` |
-| 触发位置 | 命令面板、编辑器标题栏、快捷键 |
+| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V`（`when: editorLangId == markdown`） |
+| 内部行为 | `vscode.openWith(uri, viewType, { viewColumn: Beside })` |
 
-### vibeDocuments.toggleMode
+### `vibeDocuments.showExcalidrawPreview`
 
-循环切换预览模式（Preview → WYSIWYG → Preview）。
+打开 `.excalidraw` 文件的 Vibe Editor。
+
+| 属性 | 值 |
+|------|-----|
+| 命令 ID | `vibeDocuments.showExcalidrawPreview` |
+| 标题 | Vibe: Open Excalidraw Editor |
+| 图标 | `$(open-preview)` |
+| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V`（`when: resourceExtname == .excalidraw`） |
+
+### `vibeDocuments.showCsvPreview`
+
+打开 `.csv` 文件的 Vibe Editor。
+
+| 属性 | 值 |
+|------|-----|
+| 命令 ID | `vibeDocuments.showCsvPreview` |
+| 标题 | Vibe: Open CSV Preview |
+| 图标 | `$(open-preview)` |
+| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V`（`when: resourceExtname == .csv`） |
+
+### `vibeDocuments.toggleMode`
+
+在 Markdown 的 Preview / WYSIWYG 之间循环。
 
 | 属性 | 值 |
 |------|-----|
 | 命令 ID | `vibeDocuments.toggleMode` |
-| 显示标题 | Vibe: Toggle Preview/Edit Mode |
+| 标题 | Vibe: Toggle Preview/Edit Mode |
 | 图标 | `$(edit)` |
-| 快捷键 | `Ctrl+Shift+E` / `Cmd+Shift+E` |
-| 触发条件 | `vibeDocumentsPreviewFocused` |
+| 快捷键 | `Ctrl+Shift+E` / `Cmd+Shift+E`（`when: vibeDocumentsPreviewFocused`） |
+| 内部行为 | 向当前 `active` 的 Webview 面板发送 `{type:'toggleMode'}` |
 
 ---
 
 ## 菜单配置
 
-### editor/title
+### `editor/title`
 
 ```json
+[
+  { "command": "vibeDocuments.showPreview",          "when": "editorLangId == markdown",          "group": "navigation" },
+  { "command": "vibeDocuments.showExcalidrawPreview","when": "resourceExtname == .excalidraw",    "group": "navigation" },
+  { "command": "vibeDocuments.showCsvPreview",       "when": "resourceExtname == .csv",           "group": "navigation" }
+]
+```
+
+### `explorer/context`
+
+```json
+[
+  { "command": "vibeDocuments.showPreview",          "when": "resourceLangId == markdown",        "group": "navigation" },
+  { "command": "vibeDocuments.showExcalidrawPreview","when": "resourceExtname == .excalidraw",    "group": "navigation" },
+  { "command": "vibeDocuments.showCsvPreview",       "when": "resourceExtname == .csv",           "group": "navigation" }
+]
+```
+
+---
+
+## Custom Editors
+
+```json
+[
+  { "viewType": "vibeDocuments.markdownEditor",   "selector": [{"filenamePattern":"*.md"}, {"filenamePattern":"*.markdown"}], "priority": "option" },
+  { "viewType": "vibeDocuments.csvEditor",        "selector": [{"filenamePattern":"*.csv"}],        "priority": "option" },
+  { "viewType": "vibeDocuments.excalidrawEditor", "selector": [{"filenamePattern":"*.excalidraw"}], "priority": "option" }
+]
+```
+
+注册选项（`registerCustomEditorProvider` 的第三个参数）：
+
+```typescript
 {
-  "command": "vibeDocuments.showPreviewToSide",
-  "when": "editorLangId == markdown",
-  "group": "navigation"
+  webviewOptions: { retainContextWhenHidden: true },
+  supportsMultipleEditorsPerDocument: true,
 }
 ```
 
-在 Markdown 文件的编辑器标题栏显示预览按钮。
+---
 
-### explorer/context
+## 激活事件
 
 ```json
-{
-  "command": "vibeDocuments.showPreview",
-  "when": "resourceLangId == markdown",
-  "group": "navigation"
-}
+[
+  "onLanguage:markdown",
+  "onLanguage:csv",
+  "onLanguage:excalidraw",
+  "onCustomEditor:vibeDocuments.markdownEditor",
+  "onCustomEditor:vibeDocuments.csvEditor",
+  "onCustomEditor:vibeDocuments.excalidrawEditor",
+  "onCommand:vibeDocuments.showExcalidrawPreview",
+  "onCommand:vibeDocuments.showCsvPreview"
+]
 ```
-
-在 Markdown 文件的资源管理器右键菜单中添加预览选项。
 
 ---
 
 ## 消息协议
 
-Extension Host 和 Webview 之间通过 `postMessage` 进行通信。
+Extension Host 和 Webview 之间通过 `postMessage` 通信。
 
 ### Extension → Webview
 
-#### update 消息
-
-推送文件内容到 Webview。
+#### `update`
 
 ```typescript
 {
   type: 'update',
-  content: string,     // Markdown 原始内容
-  baseUri: string,     // 文件所在目录的 Webview URI（用于解析图片路径）
+  content: string,
+  baseUri: string,         // dirname(uri) 的 webview URI 字符串
+  fileType: 'markdown' | 'csv' | 'excalidraw'
 }
 ```
 
 触发时机：
-- 面板首次创建
-- 文件系统变更（FileSystemWatcher）
-- 编辑器内文本变更（onDidChangeTextDocument）
+- Webview 发送 `{type:'ready'}` 后（强制推送一次）
+- `workspace.onDidChangeTextDocument`（且 uri 匹配本面板）
 
-#### toggleMode 消息
-
-通知 Webview 切换编辑模式。
+#### `toggleMode`
 
 ```typescript
-{
-  type: 'toggleMode'
-}
+{ type: 'toggleMode' }
 ```
 
-触发时机：执行 `vibeDocuments.toggleMode` 命令。
+触发时机：执行 `vibeDocuments.toggleMode` 命令。仅 Markdown 编辑器响应。
 
 ### Webview → Extension
 
-#### edit 消息
-
-将 Webview 中编辑的内容回写到文件。
+#### `ready`
 
 ```typescript
-{
-  type: 'edit',
-  content: string      // 修改后的完整 Markdown 内容
-}
+{ type: 'ready' }
 ```
 
-触发时机：
-- Milkdown 编辑器内容变更（`markdownUpdated` 回调）
+Webview 挂载完成后立即发送，由 `useVsCodeMessages()` 中的 effect 触发。
+
+#### `edit`
+
+```typescript
+{ type: 'edit', content: string }
+```
+
+将 Webview 中修改后的完整内容回写。扩展端调用 `applyTextDocumentContent()` 用 `fast-diff` 生成增量 `WorkspaceEdit`。
+
+#### `save`
+
+```typescript
+{ type: 'save', content?: string }
+```
+
+带 `content` 时先执行 edit，再调 `document.save()`；不带时直接 save。
 
 ---
 
 ## 核心类型
 
-### EditorMode
+### `FileType`
+
+```typescript
+type FileType = 'markdown' | 'csv' | 'excalidraw';
+```
+
+### `EditorMode`（仅 Markdown）
 
 ```typescript
 type EditorMode = 'preview' | 'wysiwyg';
 ```
 
-两种编辑模式的联合类型。
-
-### VsCodeMessage
+### `VsCodeMessage`
 
 ```typescript
 interface VsCodeMessage {
   type: string;
   content?: string;
   baseUri?: string;
+  fileType?: FileType;
 }
 ```
 
-Webview 接收的 VS Code 消息格式。
-
-### HtmlTemplateParams
+### `HtmlTemplateParams`
 
 ```typescript
 interface HtmlTemplateParams {
-  cspSource: string;   // CSP 源，来自 webview.cspSource
-  nonce: string;       // 32 位随机字符串
-  scriptUri: string;   // webview.js 的 URI
-  cssUri: string;      // webview.css 的 URI
+  cspSource: string;
+  nonce: string;
+  scriptUri: string;
+  cssUri: string;
 }
 ```
 
-构建 Webview HTML 模板的参数。
-
-### ToolbarProps
+### `CUSTOM_EDITOR_VIEW_TYPES`
 
 ```typescript
-interface ToolbarProps {
-  mode: EditorMode;
-  onModeChange: (mode: EditorMode) => void;
-}
+const CUSTOM_EDITOR_VIEW_TYPES = {
+  markdown:   'vibeDocuments.markdownEditor',
+  csv:        'vibeDocuments.csvEditor',
+  excalidraw: 'vibeDocuments.excalidrawEditor',
+} as const;
 ```
 
-### MilkdownEditorProps
-
-```typescript
-interface MilkdownEditorProps {
-  content: string;     // 当前 Markdown 内容
-}
-```
+---
 
 ## 核心类
 
-### VibeCustomTextEditorProvider
-
-Custom Text Editor 管理器，使用 VS Code 传入的 `TextDocument` 作为唯一文档模型。
+### `VibeCustomTextEditorProvider`
 
 ```typescript
 class VibeCustomTextEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(context: vscode.ExtensionContext)
-
-  // VS Code 创建 custom editor 时调用
   resolveCustomTextEditor(
     document: vscode.TextDocument,
     panel: vscode.WebviewPanel,
     token: vscode.CancellationToken
   ): Promise<void>
-
-  // 切换当前活动 custom editor 的编辑模式
   toggleMode(): void
 }
 ```
+
+### `PreviewCodeLensProvider`
+
+```typescript
+class PreviewCodeLensProvider implements vscode.CodeLensProvider {
+  constructor(fileType: FileType)
+  provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[]
+}
+```
+
+每个文件返回单个 CodeLens，标题与命令依据 `fileType`：
+
+| fileType | title | command |
+|----------|-------|---------|
+| markdown | "Open with Vibe Preview" | `vibeDocuments.showPreview` |
+| csv | "Open with Vibe CSV Editor" | `vibeDocuments.showCsvPreview` |
+| excalidraw | "Open with Vibe Excalidraw Editor" | `vibeDocuments.showExcalidrawPreview` |
 
 ---
 
 ## 工具函数
 
-### getNonce()
+### `getNonce(): string`
 
-```typescript
-function getNonce(): string
+生成长度 32、字符集 `A-Za-z0-9` 的随机字符串。
+
+### `buildPreviewHtml(params: HtmlTemplateParams): string`
+
+构建完整 HTML 文档，含 CSP `<meta>`、CSS `<link>`、`<div id="root"></div>` 和带 nonce 的 `<script type="module">`。CSP：
+
+```
+default-src 'none';
+img-src ${cspSource} https: data: blob:;
+media-src ${cspSource} https: blob:;
+script-src ${cspSource} 'nonce-${nonce}' 'unsafe-eval';
+style-src ${cspSource} 'unsafe-inline';
+font-src ${cspSource} https: data:;
 ```
 
-生成 32 位随机字符串，字符集为 `A-Za-z0-9`。用于 CSP nonce。
+### `resolveImageSrc(src, baseUri): string`
 
-### buildPreviewHtml(params)
+- 空 `src` → 原样
+- 以 `http`、`https`、`data:` 开头 → 原样
+- 空 `baseUri` → 原样
+- 其他 → `${baseUri}/${src}`
 
-```typescript
-function buildPreviewHtml(params: HtmlTemplateParams): string
-```
+### `inferFileType(fsPath): FileType`
 
-构建 Webview 的完整 HTML 文档，包含 CSP meta 标签、CSS 链接和脚本标签。
+按文件扩展名（大小写不敏感）返回：`.csv → 'csv'`、`.excalidraw → 'excalidraw'`、其他 → `'markdown'`。
 
-### resolveImageSrc(src, baseUri)
+### `getCustomEditorViewType(fsPath): string`
 
-```typescript
-function resolveImageSrc(src: string, baseUri: string): string
-```
+返回 `CUSTOM_EDITOR_VIEW_TYPES[inferFileType(fsPath)]`。
 
-解析图片 URL：
-- 空字符串 → 原样返回
-- `http://` 或 `https://` → 原样返回
-- `data:` URI → 原样返回
-- 其他（相对路径）→ `${baseUri}/${src}`
+### `applyTextDocumentContent(document, content): Promise<boolean>`
+
+基于 `fast-diff` 生成最小 `WorkspaceEdit` 并应用。无变化时直接返回 `true`；`applyEdit` 失败时返回 `false`。
 
 ---
 
-## Hooks
+## Webview Hooks
 
-### useVsCodeMessages()
+### `useVsCodeMessages()`
 
 ```typescript
 function useVsCodeMessages(): {
-  content: string;     // 当前 Markdown 内容
-  baseUri: string;     // 资源基础 URI
+  content: string;
+  baseUri: string;
+  fileType: FileType;
 }
 ```
 
-监听 Extension Host 的 `update` 消息，返回最新的内容和基础 URI。
+订阅 `update` 消息；在 mount 时 `postMessage({type:'ready'})` 触发首次推送。
 
-### useMarkdownComponents(baseUri)
+### `useMarkdownComponents(baseUri)`
 
 ```typescript
 function useMarkdownComponents(baseUri: string): {
@@ -260,19 +335,19 @@ function useMarkdownComponents(baseUri: string): {
 }
 ```
 
-返回 Streamdown 自定义组件映射。`baseUri` 变化时组件会重新生成。
+按 `baseUri` 缓存 Streamdown 自定义组件映射。
+
+### `useVsCodeTheme()`
+
+返回 `isDark: boolean`，由 `ThemeContext` 监听 `<html>` 类变化得出。
 
 ---
 
-## 激活事件
+## Webview 总线
 
-```json
-{
-  "activationEvents": ["onLanguage:markdown"]
-}
-```
+### `subscribe<K>(type, handler): () => void`
 
-扩展在首次打开 Markdown 文件时激活。激活后保持活跃状态直到 VS Code 关闭。
+注册到全局消息总线（`webview/messageBus.ts`），返回取消订阅函数。已知 `type`：`'update'`、`'toggleMode'`。
 
 ---
 
@@ -280,13 +355,18 @@ function useMarkdownComponents(baseUri: string): {
 
 ```typescript
 {
-  enableScripts: true,              // 允许执行脚本
-  retainContextWhenHidden: true,    // 隐藏时保留 Webview 状态
+  enableScripts: true,
   localResourceRoots: [
-    extensionPath/dist,             // 构建产物
-    dirname(uri.fsPath),            // Markdown 文件所在目录
-    ...workspaceFolders,            // 工作区根目录
+    <extensionPath>/dist,
+    <extensionPath>/dist/webview-assets,
+    dirname(uri.fsPath),
+    ...workspaceFolders,
   ],
+}
+// 注册选项：
+{
+  webviewOptions: { retainContextWhenHidden: true },
+  supportsMultipleEditorsPerDocument: true,
 }
 ```
 

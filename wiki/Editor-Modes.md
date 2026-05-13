@@ -1,6 +1,6 @@
 # 编辑器模式
 
-> Vibe Documents 提供两种编辑模式，每种模式使用不同的渲染引擎，针对不同使用场景优化。
+> 本文档介绍 Markdown 的两种渲染模式。CSV 和 Excalidraw 各自只有单一编辑器，不在本文档讨论范围内。
 
 ---
 
@@ -8,8 +8,8 @@
 
 | 模式 | 引擎 | 可编辑 | 适用场景 |
 |------|------|--------|----------|
-| **Preview** | Streamdown | 否 | 阅读文档，查看最终效果 |
-| **WYSIWYG** | Milkdown (ProseMirror) | 是 | 所见即所得编辑，非技术用户友好 |
+| **Preview** | Streamdown | 否 | 阅读、查看最终效果 |
+| **WYSIWYG** | Milkdown v7 (ProseMirror) | 是 | 所见即所得编辑 |
 
 ---
 
@@ -17,71 +17,49 @@
 
 ### 渲染引擎
 
-使用 [Streamdown](https://github.com/nicepkg/streamdown) 库将 Markdown 渲染为 React 组件。
+使用 [Streamdown](https://www.npmjs.com/package/streamdown) 将 Markdown 渲染为 React 组件树。
 
 ### 插件体系
 
 ```typescript
-const plugins = {
-  mermaid,                    // @streamdown/mermaid — Mermaid 图表
-  code: createCodePlugin({    // @streamdown/code — Shiki 代码高亮
-    themes: ['github-light', 'github-dark'],
-  }),
-  math,                       // @streamdown/math — KaTeX 数学公式
-  cjk,                        // @streamdown/cjk — CJK 排版优化
-};
+const plugins = useMemo(() => ({
+  code: codePlugin,    // @streamdown/code 自定义封装，加载 Shiki 双主题
+  math,                // @streamdown/math — KaTeX
+  cjk,                 // @streamdown/cjk — CJK 排版
+  renderers: [
+    { language: 'mermaid',    component: MermaidRenderer },
+    { language: 'excalidraw', component: ExcalidrawRenderer },
+  ],
+}), [MermaidRenderer]);
 ```
 
-### 自定义组件
+Mermaid 在 Preview 中作为代码块语言渲染（由 `MermaidBlock.tsx` 提供缩放、全屏、复制源码等高级功能），并非通过传统的 `streamdown/mermaid` 插件参数。
 
-通过 `useMarkdownComponents()` Hook 自定义以下元素的渲染：
+Streamdown 顶层 props 包括：
 
-#### 图片组件
-
-```typescript
-img: (props) => {
-  const src = resolveImageSrc(props.src || '', baseUri);
-  return <img {...rest} src={src} loading="lazy" />;
-}
+```tsx
+<Streamdown
+  components={components}
+  plugins={plugins}
+  mermaid={mermaidOptions}            // 仅传递主题配置给内置 mermaid 主题
+  shikiTheme={CODE_HIGHLIGHT_THEMES}  // ['github-light', 'github-dark']
+  icons={lucideIcons}
+>
+  {content}
+</Streamdown>
 ```
 
-- 自动解析相对路径为 Webview URI
-- 添加懒加载属性
+### 自定义组件（`useMarkdownComponents`）
 
-#### 链接组件
-
-```typescript
-a: (props) => (
-  <a {...props} className="markdown-link" target="_blank" rel="noopener noreferrer" />
-)
-```
-
-- 所有链接在新窗口打开
-- 添加安全属性防止 `window.opener` 漏洞
-
-#### 表格组件
-
-```typescript
-table: (props) => (
-  <div className="markdown-table-container">
-    <div className="markdown-table-wrapper">
-      <table className="markdown-table" {...props} />
-    </div>
-  </div>
-)
-```
-
-- 包裹双层容器实现水平滚动
-- 圆角边框和 hover 效果
+| 组件 | 行为 |
+|------|------|
+| `img` | `resolveImageSrc(src, baseUri)` 解析相对路径 + `loading="lazy"` |
+| `a` | `target="_blank"` + `rel="noopener noreferrer"` |
+| `table` | `markdown-table-container` / `markdown-table-wrapper` 实现水平滚动 |
 
 ### 代码高亮双主题
 
-Shiki 代码插件生成包含 `.shiki-light` 和 `.shiki-dark` 两套样式的代码块。CSS 根据 VS Code 主题自动切换：
-
-```css
-html.vscode-light .shiki .shiki-dark { display: none; }
-html.vscode-dark .shiki .shiki-light { display: none; }
-```
+Shiki 配置 `['github-light', 'github-dark']`。CSS（`webview/styles/main.css`）根据 `<html>` 上的 `vscode-light` / `vscode-dark` 类切换显示哪一套高亮 DOM。
 
 ---
 
@@ -89,37 +67,39 @@ html.vscode-dark .shiki .shiki-light { display: none; }
 
 ### 渲染引擎
 
-使用 [Milkdown](https://milkdown.dev/) v7（基于 ProseMirror）实现富文本编辑。
+使用 [Milkdown](https://milkdown.dev/) v7（基于 ProseMirror）。
 
 ### 组件结构
 
 ```
 MilkdownEditor
-└── MilkdownProvider         // Milkdown React 上下文
-    └── MilkdownEditorInner  // 实际编辑器
-        └── Milkdown         // ProseMirror 视图
+└── MilkdownProvider
+    └── Milkdown （ProseMirror 视图）
 ```
 
-### 插件配置
+### 插件清单
+
+`MilkdownEditor.tsx` 实际使用的插件（参见源码 import）：
 
 ```typescript
 Editor.make()
-  .use(commonmark)    // CommonMark 基础语法
-  .use(gfm)           // GitHub Flavored Markdown
-  .use(listener)      // 内容变更监听
-  .use(history)       // 撤销/重做
-  .use(clipboard)     // 剪贴板支持
-  .use(indent)        // 缩进
-  .use(trailing)      // 尾部空行
-  .use(math)          // KaTeX 数学公式
-  .use(diagram)       // Mermaid 图表
+  .use(commonmark)      // CommonMark 基础语法
+  .use(gfm)             // GitHub Flavored Markdown（删除线、表格等）
+  .use(listener)        // 内容变更监听（markdownUpdated）
+  .use(history)         // Undo/Redo
+  .use(clipboard)       // 剪贴板
+  .use(indent)          // 缩进
+  .use(trailing)        // 尾随空行管理
+  .use(codeBlockNodeView)   // 自定义 NodeView（来自 editableCodeBlockNodeView.ts）
+  .use(tableNodeView)       // 自定义 table / row / header 等 NodeView
+  // ...
 ```
+
+`MilkdownEditor` 不直接 `.use(math)` 或 `.use(diagram)`：数学公式和图表在 WYSIWYG 模式下以原始代码块形式编辑（通过自定义 `codeBlockNodeView` 提供编辑友好的语法高亮）。
 
 ### 内容同步机制
 
-#### 内容初始化
-
-Milkdown 使用 `defaultValueCtx` 设置初始 Markdown 内容：
+#### 初始化
 
 ```typescript
 ctx.set(defaultValueCtx, initialContent);
@@ -127,26 +107,21 @@ ctx.set(defaultValueCtx, initialContent);
 
 #### 编辑 → 回写
 
-通过 `listenerCtx.markdownUpdated` 监听内容变更：
-
 ```typescript
 ctx.get(listenerCtx).markdownUpdated((_ctx, markdown, prevMarkdown) => {
-  if (isExternalUpdate.current) return;      // 忽略外部更新
-  if (markdown === prevMarkdown) return;      // 内容未变
-  if (markdown === lastSentContent.current) return;  // 去重
+  if (isExternalUpdate.current) return;
+  if (markdown === prevMarkdown) return;
+  if (markdown === lastSentContent.current) return;
   lastSentContent.current = markdown;
-  getVsCode().postMessage({ type: 'edit', content: markdown });
+  getVsCodeApi()?.postMessage({ type: 'edit', content: markdown });
 });
 ```
 
 #### 外部更新 → 编辑器
 
-监听 `message` 事件，使用 `replaceAll()` 更新编辑器内容：
-
 ```typescript
 const currentMarkdown = editor.action(getMarkdown());
-if (currentMarkdown === msg.content) return;  // 内容未变则跳过
-
+if (currentMarkdown === msg.content) return;
 isExternalUpdate.current = true;
 editor.action(replaceAll(msg.content));
 isExternalUpdate.current = false;
@@ -156,29 +131,30 @@ isExternalUpdate.current = false;
 
 | 标志 | 用途 |
 |------|------|
-| `isExternalUpdate` | Ref 标志，外部更新时为 `true`，阻止 `markdownUpdated` 回写 |
-| `lastSentContent` | Ref 缓存上次发送的内容，相同内容不重复发送 |
-| 内容比对 | 更新前检查 `getMarkdown() === msg.content` |
+| `isExternalUpdate` | 外部更新时为 `true`，阻止 `markdownUpdated` 触发回写 |
+| `lastSentContent` | 缓存上次发送的内容，相同内容不重复发送 |
+| 内容比对 | `markdown === prevMarkdown` 和 `getMarkdown() === msg.content` |
 
 ---
 
-## 模式切换行为
+## 模式切换
 
 ### 工具栏切换
 
-点击 Toolbar 按钮直接设置目标模式。
+`Toolbar.tsx` 按钮直接调用 `setMode(targetMode)`。
 
 ### 快捷键循环切换
 
-`Cmd+Shift+E` → Extension Host 发送 `toggleMode` 消息 → Webview 循环切换：
+`Ctrl/Cmd+Shift+E` → 扩展宿主 `provider.toggleMode()` → `panel.webview.postMessage({type:'toggleMode'})` → `messageBus.subscribe('toggleMode')` 切换：
 
 ```
 preview → wysiwyg → preview → ...
 ```
 
-### 切换时的数据流
+### 切换时的挂载策略
 
-预览模式始终挂载，WYSIWYG 模式首次访问后保留挂载并通过 `display` 切换显隐。组件通过 `content` prop 和 `update` 消息保持内容同步。
+- **Preview** 始终挂载（`display: block | none`）
+- **WYSIWYG** 首次访问时进入 `visitedModes`，挂载后保留；后续切换通过 `display` 显隐而非卸载，避免重复初始化 ProseMirror
 
 ---
 

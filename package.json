@@ -189,6 +189,7 @@
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.85.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.6",
     "esbuild": "^0.28.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.14",

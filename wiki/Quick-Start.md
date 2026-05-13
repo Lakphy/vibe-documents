@@ -31,7 +31,7 @@ npm run build
 npm run package
 
 # 5. 在 VS Code 中安装
-code --install-extension vibe-documents-0.0.1.vsix
+code --install-extension vibe-documents-0.2.2.vsix
 ```
 
 ### 方式二：开发模式调试
@@ -212,7 +212,7 @@ graph TD
 
 ### Q: 如何在 WYSIWYG 模式下使用数学公式？
 
-Milkdown 编辑器集成了 `@milkdown/plugin-math`，在编辑模式下可直接输入 LaTeX 语法，公式会实时渲染。
+WYSIWYG（Milkdown）模式将 `$...$` 与 `$$...$$` 作为普通文本/代码块编辑；最终渲染请切换回 **Preview** 模式（Streamdown 通过 `@streamdown/math` 用 KaTeX 渲染）。
 
 ***
 

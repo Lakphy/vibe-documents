@@ -1,6 +1,6 @@
 # Webview UI 层
 
-> Webview UI 层是一个运行在 Chromium 沙箱中的 React 19 应用，负责 Markdown 的渲染和编辑交互。
+> Webview UI 层是一个运行在 Chromium 沙箱中的 React 19 应用，根据消息中的 `fileType` 路由到 Markdown / CSV / Excalidraw 三类编辑器。
 
 ---
 
@@ -8,11 +8,24 @@
 
 | 文件 | 职责 |
 |------|------|
-| `webview/index.tsx` | React 入口，挂载根组件，导入全局 CSS |
-| `webview/App.tsx` | 根组件，模式状态管理和模式切换 |
-| `webview/Toolbar.tsx` | 工具栏组件，模式切换按钮 |
-| `webview/MilkdownEditor.tsx` | WYSIWYG 编辑器组件 |
-| `webview/hooks.tsx` | 自定义 Hooks |
+| `webview/index.tsx` | React 入口，挂载 `<ThemeProvider><App /></ThemeProvider>` 并导入全局 CSS |
+| `webview/App.tsx` | 根组件：fileType 路由、模式切换、搜索拦截、Streamdown 插件配置 |
+| `webview/Toolbar.tsx` | Markdown 模式切换按钮 |
+| `webview/MilkdownEditor.tsx` | WYSIWYG 编辑器（Milkdown v7） |
+| `webview/MermaidBlock.tsx` | Mermaid 块渲染（缩放、全屏、复制源码） |
+| `webview/ExcalidrawEditor.tsx` | Excalidraw 全屏编辑器（lazy） |
+| `webview/ExcalidrawBlock.tsx` | Markdown 内嵌 Excalidraw 代码块渲染 |
+| `webview/CsvViewer.tsx` | CSV 编辑器入口（lazy），下层 `webview/csv/*` |
+| `webview/ThemeContext.tsx` | 暗/亮主题上下文，监听 `<html>` 类切换 |
+| `webview/hooks.tsx` | `useVsCodeMessages` / `useMarkdownComponents` / `useVsCodeTheme` |
+| `webview/messageBus.ts` | Webview 全局消息订阅总线（`subscribe(type, handler)`） |
+| `webview/vscodeApi.ts` | `getVsCodeApi()` 单例缓存 `acquireVsCodeApi()` 结果 |
+| `webview/codeHighlighter.ts` | Streamdown 代码插件（Shiki 双主题） |
+| `webview/markdownPreviewConfig.ts` | `CODE_HIGHLIGHT_THEMES` 常量 |
+| `webview/saveShortcut.ts` | Cmd/Ctrl+S 拦截，将当前内容通过 `{type:'save'}` 回写 |
+| `webview/useCodeBlockSelectAll.ts` | 两阶段 Cmd+A：第一次选当前代码块，第二次选整个容器 |
+| `webview/search/` | DOM 搜索/高亮通用模块（preview 与 WYSIWYG 共享） |
+| `webview/csv/` | CSV 编辑器全部代码 |
 
 ---
 
@@ -21,152 +34,149 @@
 ```typescript
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-// CSS 导入（顺序重要，后导入的优先级更高）
+import { ThemeProvider } from './ThemeContext';
 import 'katex/dist/katex.min.css';
 import 'streamdown/styles.css';
-import './styles/theme-bridge.css';
-import './styles/streamdown-controls.css';
-import './styles/toolbar.css';
-import './styles/milkdown-overrides.css';
-import './styles/cursor-markdown.css';
+import '@excalidraw/excalidraw/index.css';
+import './styles/main.css';
+
+const container = document.getElementById('root')!;
+createRoot(container).render(
+  <ThemeProvider>
+    <App />
+  </ThemeProvider>
+);
 ```
 
-CSS 导入顺序决定了样式覆盖优先级，`cursor-markdown.css` 最后导入，优先级最高。
+> 本地样式只有一个文件 `styles/main.css`，基于 Tailwind v4 的 `@import "tailwindcss"` 和 `@theme {}` 设计令牌实现。详情见 [样式系统](./Styling-System.md)。
 
 ---
 
 ## 根组件 — App.tsx
 
-### 组件结构
-
-```
-App
-├── Toolbar (模式切换工具栏)
-└── 条件渲染
-    ├── preview → Streamdown
-    └── wysiwyg → MilkdownEditor
-```
-
-### 状态管理
+### 路由
 
 ```typescript
-const { content, baseUri } = useVsCodeMessages();   // 来自 Extension Host 的 Markdown 内容
-const [mode, setMode] = useState<EditorMode>('preview');  // 当前编辑模式
-const components = useMarkdownComponents(baseUri);    // 自定义渲染组件
+const { content: rawContent, baseUri, fileType } = useVsCodeMessages();
+
+if (fileType === 'excalidraw') return <Suspense fallback={...}><ExcalidrawEditor content={content} /></Suspense>;
+if (fileType === 'csv')        return <Suspense fallback={...}><CsvViewer content={content} /></Suspense>;
+// Markdown 路径继续往下
 ```
+
+`ExcalidrawEditor` 和 `CsvViewer` 均通过 `React.lazy()` 懒加载，初次访问时才下载对应 chunk。
+
+### Markdown 状态与模式
+
+```typescript
+const content = useDeferredValue(rawContent);
+const [mode, setMode] = useState<EditorMode>('preview');
+const visitedModes = useRef(new Set<EditorMode>(['preview']));
+```
+
+- `useDeferredValue` 让大文档输入时 UI 保持响应
+- `visitedModes` 跟踪用户访问过的模式：Preview 始终挂载；WYSIWYG 首次访问后才挂载并保留，再次切换通过 `display: none` 显隐
 
 ### Streamdown 插件配置
 
 ```typescript
 const plugins = useMemo(() => ({
-  mermaid,               // Mermaid 图表渲染
-  code: codePlugin,      // Shiki 代码高亮（github-light / github-dark 双主题）
-  math,                  // KaTeX 数学公式
-  cjk,                   // CJK 排版优化
-}), []);
+  code: codePlugin,   // Shiki 代码高亮，github-light/github-dark 双主题
+  math,               // KaTeX
+  cjk,                // CJK 排版优化
+  renderers: [
+    { language: 'mermaid',    component: MermaidRenderer },
+    { language: 'excalidraw', component: ExcalidrawRenderer },
+  ],
+}), [MermaidRenderer]);
 ```
+
+> 注意：Mermaid 现在通过 `plugins.renderers` 注册（按代码块语言匹配），并非传入 `mermaid` 字段。`mermaidOptions` 仅作为 Streamdown 的顶层 `mermaid` prop 传递主题配置。
 
 ### 模式切换
 
-支持两种切换方式：
-1. **工具栏点击** — 直接 `setMode()`
-2. **快捷键** — Extension Host 发送 `toggleMode` 消息，循环切换两个模式
+通过 `messageBus.subscribe('toggleMode', ...)` 订阅扩展宿主推送的切换消息（来自 `Ctrl/Cmd+Shift+E`）：
 
 ```typescript
 useEffect(() => {
-  const handler = (event: MessageEvent) => {
-    if (event.data?.type === 'toggleMode') {
-      setMode(prev => {
-        const idx = MODES.indexOf(prev);
-        return MODES[(idx + 1) % MODES.length];
-      });
-    }
-  };
-  window.addEventListener('message', handler);
-  return () => window.removeEventListener('message', handler);
+  return subscribe('toggleMode', () => {
+    setMode(prev => {
+      const idx = MODES.indexOf(prev);
+      return MODES[(idx + 1) % MODES.length];
+    });
+  });
 }, []);
 ```
 
-### 空状态处理
+工具栏直接 `setMode()` 是第二种入口。
 
-当 `content` 为空且处于预览模式时，显示等待提示：
+### Cmd+F 搜索拦截
 
-```typescript
-if (!content && mode === 'preview') {
-  return (
-    <div className="markdown-section markdown-empty">
-      <p style={{ opacity: 0.5 }}>Waiting for content...</p>
-    </div>
-  );
-}
-```
+仅在 Markdown 模式下（`fileType` 非 `csv`/`excalidraw`）拦截 `Cmd/Ctrl+F`，打开 `SearchWidget`。CSV 模式内部已有自己的搜索 UI。
+
+### 空状态
+
+`!content && mode === 'preview'` 时渲染 `Waiting for content...` 占位。
 
 ---
 
 ## 自定义 Hooks — hooks.tsx
 
-### useVsCodeMessages()
+### `useVsCodeMessages()`
 
-监听 Extension Host 推送的消息，提取 Markdown 内容和基础 URI：
+监听 Webview 收到的 `update` 消息，返回：
 
 ```typescript
-export function useVsCodeMessages() {
-  const [content, setContent] = useState('');
-  const [baseUri, setBaseUri] = useState('');
-
-  useEffect(() => {
-    const handler = (event: MessageEvent<VsCodeMessage>) => {
-      const msg = event.data;
-      if (msg.type === 'update' && msg.content !== undefined) {
-        setContent(msg.content);
-        if (msg.baseUri) setBaseUri(msg.baseUri);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
-
-  return { content, baseUri };
+{
+  content: string;
+  baseUri: string;
+  fileType: FileType;   // 'markdown' | 'csv' | 'excalidraw'
 }
 ```
 
-### useMarkdownComponents()
+Hook 在挂载时通过 `vscodeApi.postMessage({ type: 'ready' })` 通知扩展，触发首次强制内容推送。
 
-返回 Streamdown 的自定义组件映射，用于覆盖默认的 HTML 元素渲染：
+### `useMarkdownComponents(baseUri)`
+
+返回 Streamdown 自定义组件映射（`{ img, a, table }`），用 `useMemo` 按 `baseUri` 缓存。
 
 | 组件 | 自定义行为 |
 |------|-----------|
-| `img` | 解析相对路径图片，添加 `loading="lazy"` |
-| `a` | 添加 `target="_blank"` 和安全属性 |
-| `table` | 包裹滚动容器，实现响应式表格 |
+| `img` | `resolveImageSrc(src, baseUri)` 解析相对路径，附加 `loading="lazy"` |
+| `a` | 添加 `target="_blank"` 和 `rel="noopener noreferrer"` |
+| `table` | 包裹 `markdown-table-container` / `markdown-table-wrapper` 实现水平滚动 |
+
+### `useVsCodeTheme()`
+
+返回 `useIsDark()` 的布尔值——本质是 `ThemeContext` 暴露的 `isDark`，源自对 `<html>` 上 `vscode-dark` / `vscode-light` 类的监听。
 
 ---
 
 ## VS Code API 桥接
 
-Webview 中通过 `acquireVsCodeApi()` 获取 VS Code 通信接口：
+`webview/vscodeApi.ts` 提供单例：
 
 ```typescript
-declare function acquireVsCodeApi(): {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-};
-```
-
-MilkdownEditor 使用单例模式缓存此 API：
-
-```typescript
-let _vscode: ReturnType<typeof acquireVsCodeApi> | undefined;
-function getVsCode() {
-  if (!_vscode) {
-    _vscode = acquireVsCodeApi();
-  }
-  return _vscode;
+let cached: ReturnType<typeof acquireVsCodeApi> | undefined;
+export function getVsCodeApi() {
+  if (cached) return cached;
+  if (typeof (globalThis as any).acquireVsCodeApi !== 'function') return undefined;
+  cached = (globalThis as any).acquireVsCodeApi();
+  return cached;
 }
 ```
 
-> `acquireVsCodeApi()` 在每个 Webview 生命周期内只能调用一次，必须缓存结果。
+`acquireVsCodeApi()` 在每个 Webview 生命周期内只能调用一次，所以全局缓存。所有 Webview→Extension 的消息都经此接口。
+
+---
+
+## 消息总线 — messageBus.ts
+
+```typescript
+subscribe<K extends keyof WebviewMessageMap>(type: K, handler): () => void;
+```
+
+模块内部仅在首次订阅时挂载一个全局 `window` 'message' 监听器，根据 `data.type` 分发给对应 handler 集合。所有 Webview 子模块统一通过 `subscribe('update' | 'toggleMode' | ...)` 订阅，避免重复添加 listener。
 
 ---
 
@@ -175,24 +185,35 @@ function getVsCode() {
 ```
 Extension Host                    Webview
      │                              │
+     │                              │ App mount → postMessage({type:'ready'})
+     │◄─────────────────────────────│
+     │  postDocumentContent(force=true)
      │  postMessage({type:'update'})│
      │─────────────────────────────►│
-     │                              │ useVsCodeMessages() → setContent()
-     │                              │ React 重新渲染
+     │                              │ messageBus 分发 → useVsCodeMessages
+     │                              │   → setContent/baseUri/fileType
+     │                              │ React 渲染
      │                              │
-     │                              │ 用户编辑
-     │                              │ Milkdown 变更监听
+     │                              │ 用户编辑（Milkdown/CSV/Excalidraw）
      │  postMessage({type:'edit'})  │
      │◄─────────────────────────────│
+     │  applyTextDocumentContent()  │
+     │  ↓ workspace.applyEdit()     │
      │                              │
-     │  workspace.applyEdit()       │
+     │  保存（Cmd+S）                │
+     │  postMessage({type:'save'})  │
+     │◄─────────────────────────────│
+     │  applyContent + document.save│
      │                              │
+     │  toggleMode 命令              │
+     │  postMessage({type:'toggleMode'}) → 仅 Markdown 响应
+     │─────────────────────────────►│
 ```
 
 ---
 
 ## 相关文档
 
-- [编辑器模式](./Editor-Modes.md) — 两种模式的技术实现
-- [样式系统](./Styling-System.md) — CSS 样式层级与主题适配
+- [编辑器模式](./Editor-Modes.md) — Markdown 两种模式的技术实现
+- [样式系统](./Styling-System.md) — Tailwind v4 主题桥接
 - [架构设计](./Architecture.md) — 双进程架构总览

@@ -1,19 +1,20 @@
 # 构建与开发
 
-> 本文档详细介绍项目的构建系统、开发流程和打包发布。
+> Vibe Documents 采用**双工具链**：扩展宿主使用 Webpack 打包成 CommonJS，Webview 使用 Vite 打包为浏览器 ESM。
 
 ---
 
 ## 技术栈
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| TypeScript | ^5.7.0 | 类型安全的开发语言 |
-| Webpack | ^5.97.0 | 模块打包器 |
-| ts-loader | ^9.5.0 | TypeScript 编译加载器 |
-| MiniCssExtractPlugin | ^2.9.0 | CSS 文件提取 |
-| css-loader | ^7.1.0 | CSS 模块化处理 |
-| vsce | — | VS Code 扩展打包工具 |
+| 工具 | 用途 |
+|------|------|
+| TypeScript ^5.7.0 | 类型安全的开发语言 |
+| Webpack ^5.x + ts-loader | 仅用于打包扩展宿主（`src/`） |
+| Vite ^8 + `@vitejs/plugin-react` | 仅用于打包 Webview（`webview/`） |
+| Tailwind CSS v4 + `@tailwindcss/vite` | 设计令牌与原子类（在 Webview 内） |
+| `@vscode/vsce` | 扩展打包与发布 |
+
+> 历史上 Webview 曾使用 Webpack + MiniCssExtractPlugin 构建，现已完全迁移至 Vite。`webpack.config.js` 现在只导出 `[extensionConfig]` 单条目。
 
 ---
 
@@ -21,21 +22,23 @@
 
 | 命令 | 说明 |
 |------|------|
-| `npm run build` | 生产模式构建 |
-| `npm run dev` | 开发模式（watch 监听） |
-| `npm run package` | 打包为 `.vsix` 文件 |
-| `npm test` | 运行全部测试 |
-| `npm run test:watch` | 测试监听模式 |
-| `npm run test:coverage` | 运行测试并生成覆盖率报告 |
-| `npm run vscode:prepublish` | 发布前构建（等同 `npm run build`） |
+| `npm run build` | 顺序执行 `build:ext` + `build:webview` |
+| `npm run build:ext` | `webpack --mode production`（仅扩展） |
+| `npm run build:webview` | `vite build --config vite.config.webview.ts` |
+| `npm run dev` | 并行：`dev:ext`（webpack watch）+ `dev:webview`（vite watch） |
+| `npm run dev:ext` | `webpack --mode development --watch` |
+| `npm run dev:webview` | `vite build --config vite.config.webview.ts --watch` |
+| `npm run package` | `vsce package`（产出 `.vsix`） |
+| `npm test` | `vitest run`（一次性运行所有测试） |
+| `npm run test:watch` | `vitest`（监听模式） |
+| `npm run test:coverage` | `vitest run --coverage`（v8 覆盖率） |
+| `npm run vscode:prepublish` | 触发 `npm run build`（VS Code Marketplace 发布前钩子） |
 
 ---
 
-## Webpack 配置
+## Webpack 配置（仅扩展）
 
-项目使用 Webpack 多配置（Multi-compiler）模式，同时构建两个目标：
-
-### Extension Host 配置
+`webpack.config.js` 导出单条目 `[extensionConfig]`：
 
 ```javascript
 const extensionConfig = {
@@ -43,61 +46,68 @@ const extensionConfig = {
   target: 'node',                    // Node.js 运行时
   entry: './src/extension.ts',
   output: {
+    path: path.resolve(__dirname, 'dist'),
     filename: 'extension.js',
-    libraryTarget: 'commonjs2',      // CommonJS 模块输出
+    libraryTarget: 'commonjs2',      // CommonJS：module.exports = ...
   },
-  externals: {
-    vscode: 'commonjs vscode',       // vscode 模块由运行时提供
-  },
+  externals: { vscode: 'commonjs vscode' },
   resolve: { extensions: ['.ts', '.js'] },
-  module: {
-    rules: [{ test: /\.ts$/, use: 'ts-loader' }],
-  },
-  devtool: 'nosources-source-map',   // 不包含源码的 source map
-};
-```
-
-关键点：
-- **target: 'node'** — Node.js 环境，支持 `require()`、`path` 等
-- **externals.vscode** — `vscode` 模块不打包，由 VS Code 运行时注入
-- **libraryTarget: 'commonjs2'** — 输出 `module.exports = ...` 格式
-
-### Webview 配置
-
-```javascript
-const webviewConfig = {
-  name: 'webview',
-  target: 'web',                     // 浏览器运行时
-  entry: './webview/index.tsx',
-  output: {
-    filename: 'webview.js',
-  },
-  resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.jsx', '.mjs'],
-    conditionNames: ['import', 'module', 'browser', 'default'],
-    mainFields: ['module', 'browser', 'main'],
-  },
-  module: {
-    rules: [
-      { test: /\.tsx?$/, use: 'ts-loader' },
-      { test: /\.css$/, use: [MiniCssExtractPlugin.loader, 'css-loader'] },
-      { test: /\.(woff|woff2|ttf|eot)$/, type: 'asset/resource' },
-    ],
-  },
-  plugins: [
-    new MiniCssExtractPlugin({ filename: 'webview.css' }),
-    new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
-  ],
+  module: { rules: [{ test: /\.ts$/, exclude: /node_modules/, use: 'ts-loader' }] },
   devtool: 'nosources-source-map',
 };
+module.exports = [extensionConfig];
 ```
 
 关键点：
-- **target: 'web'** — 浏览器环境
-- **conditionNames / mainFields** — 优先使用 ESM / browser 版本的依赖包
-- **LimitChunkCountPlugin: maxChunks: 1** — Webview 只允许加载一个 JS 文件，必须打包为单一 chunk
-- **MiniCssExtractPlugin** — 将 CSS 提取为独立文件 `webview.css`
-- **asset/resource** — 字体文件拷贝到 `dist/fonts/` 目录
+- `target: 'node'` — 支持 `require()`、`path` 等 Node API
+- `externals.vscode` — VS Code 运行时注入，不打包
+- `libraryTarget: 'commonjs2'` — VS Code Extension Host 加载格式
+
+---
+
+## Vite 配置（仅 Webview）
+
+`vite.config.webview.ts`：
+
+```typescript
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  base: './',
+  build: {
+    outDir: 'dist/webview-assets',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: 'webview/index.tsx',
+      output: {
+        entryFileNames: 'webview.js',
+        chunkFileNames: 'chunks/[name]-[hash].js',
+        assetFileNames: (info) => {
+          const name = info.names?.[0] ?? '';
+          if (name.endsWith('.css')) return 'webview.css';
+          if (/\.(woff2?|ttf|eot)$/.test(name)) return 'fonts/[name][extname]';
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
+    sourcemap: true,
+    minify: 'esbuild',
+    target: 'es2020',
+    cssMinify: true,
+  },
+  resolve: {
+    conditions: ['production', 'import', 'module', 'browser', 'default'],
+  },
+});
+```
+
+关键点：
+- **入口** — `webview/index.tsx`
+- **输出目录** — `dist/webview-assets/`（webviewHost.ts 中已配置为 `localResourceRoots` 之一）
+- **入口文件名** — 固定 `webview.js`（`webviewHost.ts` 直接引用）
+- **CSS 合并** — 所有样式合并为 `webview.css`
+- **字体** — 放入 `fonts/` 子目录
+- **chunk** — 懒加载组件（如 `ExcalidrawEditor` / `CsvViewer` / `MilkdownEditor`）拆分至 `chunks/[name]-[hash].js`
+- **Tailwind v4** — 通过 `@tailwindcss/vite` 插件在构建时扫描
 
 ---
 
@@ -115,20 +125,12 @@ const webviewConfig = {
     "declaration": true,
     "sourceMap": true,
     "moduleResolution": "node"
-  },
-  "exclude": [
-    "node_modules", "dist",
-    "vitest.config.ts",
-    "**/__tests__/**", "**/*.test.ts", "**/*.test.tsx",
-    "test/**"
-  ]
+  }
 }
 ```
 
-关键点：
-- **jsx: "react-jsx"** — 使用 React 17+ 的新 JSX 转换，无需显式 `import React`
-- **declaration: true** — 生成 `.d.ts` 类型声明文件
-- **exclude** — 排除测试文件和配置文件
+- `jsx: "react-jsx"` — 自动 JSX 转换，无需 `import React`
+- 测试文件由 `vitest.config.ts` 中的 `tsc` plugin 单独处理
 
 ---
 
@@ -136,14 +138,16 @@ const webviewConfig = {
 
 ```
 dist/
-├── extension.js          # Extension Host 入口
-├── extension.js.map      # Source map
-├── webview.js            # Webview 前端 bundle
-├── webview.js.map        # Source map
-├── webview.css           # 提取的 CSS
-├── webview.css.map       # CSS source map
-├── webview.js.LICENSE.txt # 第三方许可证
-└── fonts/                # 字体资源（如有）
+├── extension.js                  # Webpack: 扩展宿主入口
+├── extension.js.map              # Source map
+└── webview-assets/               # Vite 输出
+    ├── webview.js                # Webview 主 bundle
+    ├── webview.js.map
+    ├── webview.css               # 合并后的全部样式
+    ├── chunks/                   # 懒加载 chunk（Excalidraw/CSV/Milkdown 等）
+    │   └── *-[hash].js
+    ├── assets/                   # 其他静态资源（图片等）
+    └── fonts/                    # KaTeX 字体等
 ```
 
 ---
@@ -153,40 +157,33 @@ dist/
 ### 环境搭建
 
 ```bash
-# 克隆项目
 git clone <repository-url>
 cd vibe-documents
-
-# 安装依赖
 npm install
 ```
 
 ### 日常开发
 
 ```bash
-# 终端 1：启动开发模式（watch 监听文件变更，自动重新构建）
+# 终端 1：启动两个 watch 进程（&）
 npm run dev
 
-# 终端 2：VS Code 中按 F5 启动扩展开发宿主
-# 或使用命令面板：Debug: Start Debugging
+# VS Code 中按 F5 启动扩展开发宿主
 ```
 
-开发流程：
-1. `npm run dev` 启动 Webpack watch 模式
-2. 修改代码 → Webpack 自动重新构建
-3. 在扩展开发宿主中按 `Ctrl+R`（Mac: `Cmd+R`）重新加载窗口
-4. 打开 `.md` 文件，使用 `Cmd+Shift+V` 打开预览查看效果
+流程：
+
+1. `npm run dev` 启动 webpack + vite 两个 watch 进程
+2. 修改 `src/` → webpack 重新构建 `dist/extension.js`
+3. 修改 `webview/` → vite 重新构建 `dist/webview-assets/*`
+4. 在扩展开发宿主中 `Cmd/Ctrl+R` 重新加载窗口
+5. 打开 `.md` / `.csv` / `.excalidraw` 文件 → 在 CodeLens / 标题栏 / 命令面板触发 Vibe Editor
 
 ### 运行测试
 
 ```bash
-# 运行全部测试
 npm test
-
-# 监听模式（开发时推荐）
 npm run test:watch
-
-# 生成覆盖率报告
 npm run test:coverage
 ```
 
@@ -197,47 +194,24 @@ npm run test:coverage
 ### 打包为 VSIX
 
 ```bash
-# 确保已全局安装 vsce
 npm install -g @vscode/vsce
-
-# 构建并打包
 npm run build
 npm run package
-# 生成 vibe-documents-0.0.1.vsix
+# 生成 vibe-documents-0.2.2.vsix
 ```
 
-### .vscodeignore
+### `.vscodeignore`
 
-控制打包时排除的文件：
+控制打包时排除的目录与文件（如 `src/`、`webview/`、`test/`、`*.config.*`、`*.map` 等），最终 VSIX 仅包含：
 
-```
-.vscode/**
-node_modules/**
-src/**
-webview/**
-test/**
-webpack.config.js
-tsconfig.json
-*.map
-dist/**/*.d.ts
-dist/src/**
-dist/webview/**
-```
+- `dist/extension.js`
+- `dist/webview-assets/**`
+- `package.json`
 
-最终 VSIX 包仅包含：
-- `dist/extension.js` — Extension Host 代码
-- `dist/webview.js` — Webview bundle
-- `dist/webview.css` — Webview 样式
-- `dist/fonts/**` — 字体资源
-- `package.json` — 扩展清单
-
-### 发布到 Marketplace
+### 发布
 
 ```bash
-# 登录发布者账号
 vsce login <publisher>
-
-# 发布
 vsce publish
 ```
 
@@ -248,27 +222,22 @@ vsce publish
 ### 构建失败
 
 1. 确保 Node.js ≥ 18
-2. 删除 `node_modules` 和 `dist`，重新安装：
-   ```bash
-   rm -rf node_modules dist
-   npm install
-   npm run build
-   ```
+2. 删除 `node_modules` 和 `dist`，重新安装
 
 ### Webview 空白
 
-1. 打开开发者工具（`Cmd+Shift+I` → Console 面板）检查错误
-2. 确认 `dist/webview.js` 和 `dist/webview.css` 存在
-3. 检查 CSP 是否拦截了资源加载
+1. 打开 Webview 开发者工具（命令面板：`Developer: Open Webview Developer Tools`）
+2. 确认 `dist/webview-assets/webview.js` 和 `webview.css` 存在
+3. 检查 CSP 是否拦截了某些资源
 
 ### Source Map
 
-构建使用 `nosources-source-map`，生成不包含源码的 source map。适合发布环境，调试时可在 `webpack.config.js` 中改为 `source-map`。
+webpack 使用 `nosources-source-map`（不含源码），vite 启用 `sourcemap: true`（含源码，仅在开发场景下使用）。
 
 ---
 
 ## 相关文档
 
-- [架构设计](./Architecture.md) — 双入口构建的架构背景
+- [架构设计](./Architecture.md) — 双工具链的架构背景
 - [测试体系](./Testing.md) — 测试配置与运行
 - [贡献指南](./Contributing.md) — 提交代码的流程
