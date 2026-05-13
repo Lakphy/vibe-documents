@@ -66,13 +66,19 @@ describe('markdown preview styles', () => {
     expect(editableCodeBlockSource).toContain("setAttribute('data-streamdown', 'code-block-header')");
     expect(editableCodeBlockSource).toContain("setAttribute('data-streamdown', 'code-block-body')");
     expect(milkdownSource).toContain('createEditableCodeBlockView');
-    expect(editableCodeBlockSource).toContain("document.createElement('textarea')");
+    expect(editableCodeBlockSource).not.toContain("document.createElement('textarea')");
+    expect(editableCodeBlockSource).toContain("document.createElement('code')");
     expect(editableCodeBlockSource).toContain('data-markdown-code-content');
+    expect(editableCodeBlockSource).toContain("container.setAttribute('contenteditable', 'false')");
+    expect(editableCodeBlockSource).toContain("code.setAttribute('contenteditable', 'true')");
+    expect(editableCodeBlockSource).toContain('code.tabIndex = 0');
     expect(editableCodeBlockSource).toContain('codePlugin.highlight');
     expect(css).toContain('.markdown-edit-code-block');
     expect(css).toContain('.markdown-edit-code-editor');
-    expect(css).toContain('.markdown-edit-code-textarea');
-    expect(css).toContain('color: transparent !important');
+    expect(css).toContain('.markdown-edit-code-content');
+    expect(css).not.toContain('.markdown-edit-code-textarea');
+    expect(css).not.toMatch(/(^|\n)\s*color:\s*transparent\s*!important\s*;/);
+    expect(css).not.toContain('-webkit-text-fill-color: transparent !important');
   });
 
   it('shares the Streamdown code highlighter between preview and edit mode', () => {
@@ -86,7 +92,7 @@ describe('markdown preview styles', () => {
     expect(editableCodeBlockSource).toContain('activeSnapshotKey');
     expect(editableCodeBlockSource).toContain('requestAnimationFrame');
     expect(editableCodeBlockSource).toContain('if (key === activeSnapshotKey) return');
-    expect(editableCodeBlockSource).toContain('if (highlightCode.textContent !== nextText)');
+    expect(editableCodeBlockSource).toContain('renderCode(code, snapshot.value');
     expect(milkdownSource).not.toContain('contentDOM: code');
     expect(editableCodeBlockSource).not.toContain('MutationObserver');
   });
@@ -112,10 +118,14 @@ describe('markdown preview styles', () => {
     expect(milkdownSource).toContain("setAttribute('data-streamdown', 'image')");
   });
 
-  it('uses preview Mermaid block classes in edit mode', () => {
-    expect(editableCodeBlockSource).toContain('mermaid-preview-block markdown-edit-mermaid-block');
-    expect(editableCodeBlockSource).toContain("editor.root.classList.add('mermaid-preview-source', 'markdown-edit-mermaid-source')");
-    expect(editableCodeBlockSource).toContain("language: 'mermaid'");
-    expect(milkdownSource).not.toContain('mermaid-split-container');
+  it('uses one pure code editor for special-language code blocks in edit mode', () => {
+    expect(milkdownSource).toContain('return createEditableCodeBlockView()');
+    expect(milkdownSource).not.toContain('createEditableMermaidBlockView');
+    expect(milkdownSource).not.toContain('createExcalidrawNodeView');
+    expect(milkdownSource).not.toContain('ExcalidrawEditMode');
+    expect(editableCodeBlockSource).not.toContain('mermaidLib');
+    expect(editableCodeBlockSource).not.toContain('mermaid-preview-surface');
+    expect(css).not.toContain('markdown-edit-mermaid-preview-surface');
+    expect(css).not.toContain('excalidraw-edit-container');
   });
 });

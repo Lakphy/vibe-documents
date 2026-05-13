@@ -679,7 +679,7 @@
   }
 
   .markdown-edit-code-block {
-    @apply my-4 flex w-full flex-col gap-2 overflow-hidden rounded-xl border p-2;
+    @apply my-4 flex w-full flex-col gap-2 overflow-hidden rounded-lg border p-2;
     background: var(--color-vsc-sidebar);
     border-color: var(--color-cursor-stroke-tertiary);
   }
@@ -699,85 +699,44 @@
     border-color: var(--color-cursor-stroke-tertiary);
   }
 
+  .markdown-edit-code-block:focus-within .markdown-edit-code-block-body {
+    border-color: color-mix(in srgb, var(--color-vsc-link) 45%, var(--color-cursor-stroke-tertiary));
+  }
+
   .markdown-edit-code-editor {
-    @apply relative m-0 overflow-hidden p-0;
+    @apply m-0 overflow-visible p-0;
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
+    box-sizing: border-box;
     color: var(--color-vsc-fg);
     font-family: var(--vscode-editor-font-family, "SF Mono", Monaco, Menlo, Consolas, monospace);
     font-size: var(--vscode-editor-font-size, 13px);
-    line-height: normal;
+    font-variant-ligatures: none;
+    letter-spacing: 0;
+    line-height: 1.5;
+    min-height: 24px;
     tab-size: 4;
     white-space: pre;
   }
 
-  .markdown-edit-code-highlight-code {
-    @apply block p-0 rounded-none text-[0.9em] leading-normal;
+  .markdown-edit-code-content {
+    @apply block p-0 rounded-none;
     background: none !important;
-    color: var(--color-vsc-fg);
-    font: inherit;
-    min-width: 100%;
-    pointer-events: none;
-    tab-size: 4;
-    white-space: pre;
-  }
-
-  .markdown-edit-code-textarea {
-    @apply absolute inset-0 block w-full resize-none rounded-none border-0 p-0 text-[0.9em] leading-normal;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: transparent !important;
     caret-color: var(--color-vsc-cursor);
+    color: var(--color-vsc-fg);
     font: inherit;
+    line-height: inherit;
+    min-width: 100%;
     outline: none !important;
-    overflow: auto;
     tab-size: 4;
     white-space: pre;
   }
 
-  .markdown-edit-code-textarea::selection {
-    color: var(--color-vsc-fg);
+  .markdown-edit-code-content::selection,
+  .markdown-edit-code-content *::selection {
     background: var(--color-vsc-selection);
   }
-}
-
-/* ==========================================================================
-   Mermaid 编辑视图 — 使用 Preview Mermaid block 的同款视觉结构
-   ========================================================================== */
-.markdown-edit-mermaid-block {
-  @apply my-4;
-}
-
-.markdown-edit-mermaid-source {
-  min-height: 96px;
-}
-
-.markdown-edit-mermaid-source .markdown-edit-code-highlight-code,
-.markdown-edit-mermaid-source .markdown-edit-code-textarea {
-  font-size: 1em;
-}
-
-.markdown-edit-mermaid-preview-surface {
-  cursor: default;
-}
-
-/* ==========================================================================
-   Excalidraw 编辑视图（编辑模式）
-   ========================================================================== */
-.excalidraw-edit-container {
-  @apply my-2 mb-4 rounded-lg overflow-hidden;
-  border: 1px solid var(--color-cursor-stroke-tertiary);
-}
-.excalidraw-edit-container .excalidraw-header {
-  @apply flex items-center justify-between px-3 py-1.5 text-xs;
-  background: var(--color-cursor-bg-quaternary);
-  color: var(--color-cursor-text-tertiary);
-  border-bottom: 1px solid var(--color-cursor-stroke-tertiary);
-}
-.excalidraw-edit-container .excalidraw-canvas-wrap {
-  height: 450px;
-  background: var(--color-vsc-bg);
 }
 
 /* ==========================================================================

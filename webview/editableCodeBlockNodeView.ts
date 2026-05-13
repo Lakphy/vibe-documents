@@ -1,36 +1,69 @@
 import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
 import type { HighlightResult } from '@streamdown/code';
-import mermaidLib from 'mermaid';
 import { codePlugin } from './codeHighlighter';
 
+type CodeBlockNode = Parameters<NodeViewConstructor>[0];
+type CodeBlockView = Parameters<NodeViewConstructor>[1];
+type GetCodeBlockPos = Parameters<NodeViewConstructor>[2];
 type CodeHighlightLanguage = Parameters<typeof codePlugin.highlight>[0]['language'];
 type HighlightToken = HighlightResult['tokens'][number][number];
+type FrameHandle = number | ReturnType<typeof globalThis.setTimeout>;
 
-let mermaidInitialized = false;
-let mermaidIdCounter = 0;
-
-function ensureMermaidInit(isDark: boolean) {
-  mermaidLib.initialize({
-    startOnLoad: false,
-    theme: isDark ? 'dark' : 'default',
-    themeVariables: isDark ? {
-      primaryColor: '#2d333b',
-      primaryTextColor: '#e6edf3',
-      primaryBorderColor: '#444c56',
-      lineColor: '#768390',
-      secondaryColor: '#1c2128',
-      tertiaryColor: '#2d333b',
-    } : undefined,
-  });
-  mermaidInitialized = true;
+interface CodeEditorOptions {
+  language: string;
+  value: string;
+  onChange: (value: string) => void;
 }
 
-function applyHighlightTokenStyle(span: HTMLSpanElement, token: HighlightToken) {
-  const htmlStyle = token.htmlStyle as Record<string, string> | undefined;
-  if (htmlStyle) {
-    Object.entries(htmlStyle).forEach(([key, value]) => {
-      if (key === 'color') span.style.color = value;
-      else span.style.setProperty(key, value);
+interface SelectionSnapshot {
+  anchor: number;
+  focus: number;
+}
+
+interface HighlightSnapshot {
+  language: string;
+  value: string;
+}
+
+function normalizeLanguage(language: unknown) {
+  return typeof language === 'string' ? language.trim() : '';
+}
+
+function displayLanguage(language: string) {
+  return language || 'text';
+}
+
+function highlightLanguage(language: string) {
+  return (language || 'text') as CodeHighlightLanguage;
+}
+
+function createFrameScheduler() {
+  const request =
+    typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+      ? window.requestAnimationFrame.bind(window)
+      : (callback: FrameRequestCallback) => globalThis.setTimeout(() => callback(Date.now()), 16);
+
+  const cancel =
+    typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function'
+      ? (id: FrameHandle) => window.cancelAnimationFrame(id as number)
+      : (id: FrameHandle) => globalThis.clearTimeout(id as ReturnType<typeof globalThis.setTimeout>);
+
+  return { request, cancel };
+}
+
+function snapshotKey({ language, value }: HighlightSnapshot) {
+  return `${displayLanguage(language)}\u0000${value}`;
+}
+
+function applyTokenStyle(span: HTMLSpanElement, token: HighlightToken) {
+  const htmlStyle = token.htmlStyle as string | Record<string, string> | undefined;
+
+  if (typeof htmlStyle === 'string') {
+    span.style.cssText += htmlStyle;
+  } else if (htmlStyle) {
+    Object.entries(htmlStyle).forEach(([property, value]) => {
+      if (property === 'color') span.style.color = value;
+      else span.style.setProperty(property, value);
     });
   }
 
@@ -39,185 +72,352 @@ function applyHighlightTokenStyle(span: HTMLSpanElement, token: HighlightToken) 
   }
 }
 
-function appendHighlightedLine(parent: HTMLElement, tokens: HighlightToken[], fallbackText = '') {
-  const line = document.createElement('span');
-  line.className = 'markdown-edit-code-highlight-line';
+function appendPlainText(parent: HTMLElement, text: string) {
+  parent.appendChild(document.createTextNode(text));
+}
 
-  if (tokens.length === 0) {
-    line.textContent = fallbackText;
-  } else {
-    tokens.forEach((token) => {
-      const tokenSpan = document.createElement('span');
-      tokenSpan.textContent = token.content;
-      applyHighlightTokenStyle(tokenSpan, token);
-      line.appendChild(tokenSpan);
-    });
+function appendHighlightedLine(parent: HTMLElement, tokens: HighlightToken[] | undefined, fallback: string) {
+  const line = document.createElement('span');
+  line.className = 'markdown-edit-code-line';
+
+  if (!tokens || tokens.length === 0) {
+    appendPlainText(line, fallback);
+    parent.appendChild(line);
+    return;
   }
+
+  tokens.forEach((token) => {
+    const tokenSpan = document.createElement('span');
+    tokenSpan.textContent = token.content;
+    applyTokenStyle(tokenSpan, token);
+    line.appendChild(tokenSpan);
+  });
 
   parent.appendChild(line);
 }
 
-function renderPlainCodeHighlight(code: HTMLElement, text: string) {
-  code.replaceChildren();
-  const lines = text.split('\n');
-  lines.forEach((line, index) => {
-    appendHighlightedLine(code, [], line);
-    if (index < lines.length - 1) code.appendChild(document.createTextNode('\n'));
-  });
-}
+function renderCode(target: HTMLElement, value: string, result?: HighlightResult) {
+  target.replaceChildren();
 
-function renderCodeHighlight(code: HTMLElement, result: HighlightResult, fallbackText: string) {
-  code.replaceChildren();
-  const fallbackLines = fallbackText.split('\n');
-  const lines = result.tokens.length > 0 ? result.tokens : fallbackLines.map(() => []);
+  const fallbackLines = value.split('\n');
+  const lineCount = Math.max(fallbackLines.length, result?.tokens.length ?? 0, 1);
 
-  lines.forEach((lineTokens, index) => {
-    appendHighlightedLine(code, lineTokens, fallbackLines[index] ?? '');
-    if (index < lines.length - 1) code.appendChild(document.createTextNode('\n'));
-  });
-}
-
-function makeSnapshotKey(text: string, language: string) {
-  return `${language || 'text'}\u0000${text}`;
-}
-
-function getFrameScheduler() {
-  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-    return {
-      request: window.requestAnimationFrame.bind(window),
-      cancel: window.cancelAnimationFrame.bind(window),
-    };
+  for (let index = 0; index < lineCount; index += 1) {
+    appendHighlightedLine(target, result?.tokens[index], fallbackLines[index] ?? '');
+    if (index < lineCount - 1) appendPlainText(target, '\n');
   }
+}
+
+function readCodeValue(root: HTMLElement) {
+  return root.textContent ?? '';
+}
+
+function offsetFromDomPosition(root: HTMLElement, node: Node, offset: number) {
+  const range = document.createRange();
+  range.selectNodeContents(root);
+  range.setEnd(node, offset);
+  return range.toString().length;
+}
+
+function getSelectionSnapshot(root: HTMLElement): SelectionSnapshot | null {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  if (!selection.anchorNode || !selection.focusNode) return null;
+  if (!root.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return null;
 
   return {
-    request: (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 16),
-    cancel: (id: number) => window.clearTimeout(id),
+    anchor: offsetFromDomPosition(root, selection.anchorNode, selection.anchorOffset),
+    focus: offsetFromDomPosition(root, selection.focusNode, selection.focusOffset),
   };
 }
 
-interface EditableCodeEditorOptions {
-  language: string;
-  text: string;
-  onChange: (text: string) => void;
+function findTextPosition(root: HTMLElement, offset: number) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let remaining = Math.max(0, offset);
+  let lastText: Text | null = null;
+
+  while (walker.nextNode()) {
+    const text = walker.currentNode as Text;
+    lastText = text;
+    if (remaining <= text.data.length) {
+      return { node: text, offset: remaining };
+    }
+    remaining -= text.data.length;
+  }
+
+  if (lastText) return { node: lastText, offset: lastText.data.length };
+
+  const emptyText = document.createTextNode('');
+  root.appendChild(emptyText);
+  return { node: emptyText, offset: 0 };
 }
 
-function createEditableCodeEditor({ language, text, onChange }: EditableCodeEditorOptions) {
+function restoreSelection(root: HTMLElement, snapshot: SelectionSnapshot | null) {
+  if (!snapshot) return;
+
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  const anchor = findTextPosition(root, snapshot.anchor);
+  const focus = findTextPosition(root, snapshot.focus);
+
+  selection.removeAllRanges();
+  const range = document.createRange();
+  range.setStart(anchor.node, anchor.offset);
+  range.collapse(true);
+  selection.addRange(range);
+
+  if (typeof selection.extend === 'function') {
+    selection.extend(focus.node, focus.offset);
+    return;
+  }
+
+  range.setStart(
+    snapshot.anchor <= snapshot.focus ? anchor.node : focus.node,
+    snapshot.anchor <= snapshot.focus ? anchor.offset : focus.offset,
+  );
+  range.setEnd(
+    snapshot.anchor <= snapshot.focus ? focus.node : anchor.node,
+    snapshot.anchor <= snapshot.focus ? focus.offset : anchor.offset,
+  );
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function replaceRange(value: string, start: number, end: number, replacement: string) {
+  return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+}
+
+function selectedLineRange(value: string, selection: SelectionSnapshot) {
+  const start = Math.min(selection.anchor, selection.focus);
+  const end = Math.max(selection.anchor, selection.focus);
+  const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+  const nextLineBreak = value.indexOf('\n', end);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  return { start, end, lineStart, lineEnd };
+}
+
+function replaceCodeBlockText(view: CodeBlockView, getPos: GetCodeBlockPos, value: string) {
+  const pos = getPos();
+  if (typeof pos !== 'number') return;
+
+  const node = view.state.doc.nodeAt(pos);
+  if (!node || node.type.name !== 'code_block') return;
+  if ((node.textContent || '') === value) return;
+
+  const contentStart = pos + 1;
+  const contentEnd = pos + node.nodeSize - 1;
+  const replacement = value ? view.state.schema.text(value) : [];
+  view.dispatch(view.state.tr.replaceWith(contentStart, contentEnd, replacement));
+}
+
+function createCodeEditor({ language, value, onChange }: CodeEditorOptions) {
   const root = document.createElement('pre');
   root.className = 'markdown-edit-code-editor';
+  root.setAttribute('contenteditable', 'false');
+  root.setAttribute('data-language', language);
 
-  const highlightCode = document.createElement('code');
-  highlightCode.className = 'markdown-edit-code-highlight-code shiki';
-  highlightCode.setAttribute('aria-hidden', 'true');
-  root.appendChild(highlightCode);
+  const code = document.createElement('code');
+  code.className = 'markdown-edit-code-content shiki';
+  code.setAttribute('contenteditable', 'true');
+  code.setAttribute('data-markdown-code-content', 'true');
+  code.setAttribute('role', 'textbox');
+  code.setAttribute('aria-multiline', 'true');
+  code.setAttribute('aria-label', `${displayLanguage(language)} code`);
+  code.setAttribute('autocapitalize', 'off');
+  code.setAttribute('autocomplete', 'off');
+  code.setAttribute('autocorrect', 'off');
+  code.setAttribute('spellcheck', 'false');
+  code.tabIndex = 0;
+  root.appendChild(code);
 
-  const textarea = document.createElement('textarea');
-  textarea.className = 'markdown-edit-code-textarea';
-  textarea.setAttribute('data-markdown-code-content', 'true');
-  textarea.setAttribute('aria-label', language ? `${language} code` : 'code');
-  textarea.setAttribute('autocapitalize', 'off');
-  textarea.setAttribute('autocomplete', 'off');
-  textarea.setAttribute('autocorrect', 'off');
-  textarea.setAttribute('spellcheck', 'false');
-  textarea.wrap = 'off';
-  textarea.value = text;
-  root.appendChild(textarea);
-
-  const frame = getFrameScheduler();
-  let frameId: number | undefined;
+  const frame = createFrameScheduler();
+  let currentValue = value;
+  let currentLanguage = language;
+  let frameId: FrameHandle | undefined;
   let runId = 0;
   let activeSnapshotKey = '';
-  let scheduledText = text;
-  let scheduledLanguage = language || 'text';
-  let destroyed = false;
+  let composing = false;
+  let disposed = false;
+  let pendingHighlight: HighlightSnapshot = { language, value };
 
-  const syncHeight = () => {
-    textarea.style.height = '0px';
-    const height = Math.max(textarea.scrollHeight, 24);
-    textarea.style.height = `${height}px`;
-    root.style.minHeight = `${height}px`;
-    highlightCode.style.minHeight = `${height}px`;
-  };
-
-  const syncScroll = () => {
-    highlightCode.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
-  };
-
-  const renderHighlightResult = (key: string, run: number, result: HighlightResult, fallbackText: string) => {
-    if (destroyed) return;
-    if (run !== runId) return;
-    if (key !== activeSnapshotKey) return;
-    renderCodeHighlight(highlightCode, result, fallbackText);
-    syncScroll();
+  const applyRenderedCode = (snapshot: HighlightSnapshot, result?: HighlightResult) => {
+    const selection = getSelectionSnapshot(code);
+    renderCode(code, snapshot.value, result);
+    restoreSelection(code, selection);
   };
 
   const flushHighlight = () => {
     frameId = undefined;
-    const nextText = scheduledText;
-    const nextLanguage = scheduledLanguage || 'text';
-    const key = makeSnapshotKey(nextText, nextLanguage);
+    if (disposed || composing) return;
+
+    const snapshot = { ...pendingHighlight };
+    const key = snapshotKey(snapshot);
     if (key === activeSnapshotKey) return;
 
     activeSnapshotKey = key;
     const run = ++runId;
-
-    if (highlightCode.textContent !== nextText) {
-      renderPlainCodeHighlight(highlightCode, nextText);
-    }
+    applyRenderedCode(snapshot);
 
     const result = codePlugin.highlight(
       {
-        code: nextText,
-        language: nextLanguage as CodeHighlightLanguage,
+        code: snapshot.value,
+        language: highlightLanguage(snapshot.language),
         themes: codePlugin.getThemes(),
       },
       (asyncResult) => {
-        renderHighlightResult(key, run, asyncResult, nextText);
-      }
+        if (
+          disposed ||
+          composing ||
+          run !== runId ||
+          key !== activeSnapshotKey ||
+          snapshot.value !== currentValue ||
+          normalizeLanguage(snapshot.language) !== currentLanguage
+        ) {
+          return;
+        }
+        applyRenderedCode(snapshot, asyncResult);
+      },
     );
 
-    if (result) {
-      renderHighlightResult(key, run, result, nextText);
-    }
+    if (result) applyRenderedCode(snapshot, result);
   };
 
-  const syncHighlight = (nextText: string, nextLanguage = 'text') => {
-    if (destroyed) return;
-    scheduledText = nextText;
-    scheduledLanguage = nextLanguage || 'text';
-    const key = makeSnapshotKey(scheduledText, scheduledLanguage);
-    if (key === activeSnapshotKey) return;
-    if (frameId !== undefined) return;
+  const scheduleHighlight = (nextValue: string, nextLanguage = currentLanguage) => {
+    pendingHighlight = { value: nextValue, language: nextLanguage };
+    if (disposed || composing || frameId !== undefined) return;
     frameId = frame.request(flushHighlight);
   };
 
-  textarea.addEventListener('input', () => {
-    syncHeight();
-    syncHighlight(textarea.value, scheduledLanguage);
-    onChange(textarea.value);
-  });
-  textarea.addEventListener('scroll', syncScroll);
+  const commitValue = (nextValue: string) => {
+    if (nextValue === currentValue) {
+      scheduleHighlight(nextValue);
+      return;
+    }
 
-  syncHeight();
-  syncHighlight(textarea.value, language);
+    currentValue = nextValue;
+    scheduleHighlight(nextValue);
+    onChange(nextValue);
+  };
+
+  const setEditorValue = (nextValue: string, selection: SelectionSnapshot | null = getSelectionSnapshot(code)) => {
+    currentValue = nextValue;
+    renderCode(code, nextValue);
+    restoreSelection(code, selection);
+    scheduleHighlight(nextValue);
+  };
+
+  const applyTextEdit = (replacement: string) => {
+    const selection = getSelectionSnapshot(code) ?? { anchor: currentValue.length, focus: currentValue.length };
+    const previousValue = currentValue;
+    const start = Math.min(selection.anchor, selection.focus);
+    const end = Math.max(selection.anchor, selection.focus);
+    const nextValue = replaceRange(readCodeValue(code), start, end, replacement);
+    const caret = start + replacement.length;
+    setEditorValue(nextValue, { anchor: caret, focus: caret });
+    if (nextValue !== previousValue) onChange(nextValue);
+  };
+
+  const indentSelection = (outdent: boolean) => {
+    const selection = getSelectionSnapshot(code);
+    if (!selection) return false;
+
+    const valueBefore = readCodeValue(code);
+    const { start, end, lineStart, lineEnd } = selectedLineRange(valueBefore, selection);
+    const selectedLines = valueBefore.slice(lineStart, lineEnd);
+
+    if (!outdent) {
+      const indented = selectedLines.replace(/^/gm, '  ');
+      const nextValue = replaceRange(valueBefore, lineStart, lineEnd, indented);
+      const previousValue = currentValue;
+      setEditorValue(nextValue, {
+        anchor: selection.anchor + (selection.anchor === start ? 2 : indented.length - selectedLines.length),
+        focus: selection.focus + (selection.focus === start ? 2 : indented.length - selectedLines.length),
+      });
+      if (nextValue !== previousValue) onChange(nextValue);
+      return true;
+    }
+
+    let removedBeforeAnchor = 0;
+    let removedBeforeFocus = 0;
+    let totalRemoved = 0;
+    const outdented = selectedLines.replace(/^( {1,2}|\t)/gm, (indent: string, _capture: string, offset: number) => {
+      const removed = indent.length;
+      totalRemoved += removed;
+      if (lineStart + offset < selection.anchor) removedBeforeAnchor += removed;
+      if (lineStart + offset < selection.focus) removedBeforeFocus += removed;
+      return '';
+    });
+
+    if (outdented === selectedLines) return true;
+
+    const nextValue = replaceRange(valueBefore, lineStart, lineEnd, outdented);
+    const previousValue = currentValue;
+    setEditorValue(nextValue, {
+      anchor: Math.max(lineStart, selection.anchor - removedBeforeAnchor),
+      focus: Math.max(lineStart, selection.focus - removedBeforeFocus),
+    });
+    if (nextValue !== previousValue) onChange(nextValue);
+    return totalRemoved > 0;
+  };
+
+  code.addEventListener('input', () => {
+    if (composing) return;
+    commitValue(readCodeValue(code));
+  });
+
+  code.addEventListener('compositionstart', () => {
+    composing = true;
+  });
+
+  code.addEventListener('compositionend', () => {
+    composing = false;
+    commitValue(readCodeValue(code));
+  });
+
+  code.addEventListener('beforeinput', (event) => {
+    const input = event as InputEvent;
+    if (input.inputType !== 'insertParagraph' && input.inputType !== 'insertLineBreak') return;
+    event.preventDefault();
+    applyTextEdit('\n');
+  });
+
+  code.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      indentSelection(event.shiftKey);
+      return;
+    }
+
+    if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      applyTextEdit('\n');
+    }
+  });
+
+  code.addEventListener('paste', (event) => {
+    event.preventDefault();
+    applyTextEdit(event.clipboardData?.getData('text/plain') ?? '');
+  });
+
+  renderCode(code, value);
+  scheduleHighlight(value, language);
 
   return {
     root,
-    textarea,
-    highlightCode,
+    code,
     setLanguage(nextLanguage: string) {
-      const normalizedLanguage = nextLanguage || 'text';
-      scheduledLanguage = normalizedLanguage;
-      textarea.setAttribute('aria-label', nextLanguage ? `${nextLanguage} code` : 'code');
-      syncHighlight(textarea.value, normalizedLanguage);
+      currentLanguage = normalizeLanguage(nextLanguage);
+      root.setAttribute('data-language', currentLanguage);
+      code.setAttribute('aria-label', `${displayLanguage(currentLanguage)} code`);
+      scheduleHighlight(currentValue, currentLanguage);
     },
-    setText(nextText: string) {
-      if (textarea.value === nextText) return;
-      textarea.value = nextText;
-      syncHeight();
-      syncHighlight(nextText, scheduledLanguage);
+    setValue(nextValue: string) {
+      if (nextValue === currentValue && readCodeValue(code) === nextValue) return;
+      setEditorValue(nextValue);
     },
     destroy() {
-      destroyed = true;
+      disposed = true;
       runId += 1;
       if (frameId !== undefined) {
         frame.cancel(frameId);
@@ -227,77 +427,54 @@ function createEditableCodeEditor({ language, text, onChange }: EditableCodeEdit
   };
 }
 
-function replaceCodeBlockText(
-  view: Parameters<NodeViewConstructor>[1],
-  getPos: Parameters<NodeViewConstructor>[2],
-  node: Parameters<NodeViewConstructor>[0],
-  text: string
-) {
-  const pos = getPos();
-  if (typeof pos !== 'number') return;
-  if ((node.textContent || '') === text) return;
-
-  const contentStart = pos + 1;
-  const contentEnd = pos + node.nodeSize - 1;
-  const content = text ? view.state.schema.text(text) : [];
-  view.dispatch(view.state.tr.replaceWith(contentStart, contentEnd, content));
-}
-
 export function createEditableCodeBlockView(): NodeViewConstructor {
   return (node, view, getPos) => {
-    let currentNode = node;
-    let currentLanguage = typeof node.attrs.language === 'string' ? node.attrs.language : '';
+    let language = normalizeLanguage(node.attrs.language);
 
     const container = document.createElement('div');
-    container.className = 'my-4 flex w-full flex-col gap-2 rounded-xl border border-border bg-sidebar p-2 markdown-edit-code-block';
-    container.setAttribute('data-streamdown', 'code-block');
+    container.className = 'my-4 flex w-full flex-col gap-2 rounded-lg border border-border bg-sidebar p-2 markdown-edit-code-block';
     container.setAttribute('contenteditable', 'false');
+    container.setAttribute('data-streamdown', 'code-block');
 
     const header = document.createElement('div');
     header.className = 'flex h-8 items-center text-muted-foreground text-xs markdown-edit-code-block-header';
+    header.setAttribute('contenteditable', 'false');
     header.setAttribute('data-streamdown', 'code-block-header');
 
     const label = document.createElement('span');
     label.className = 'ml-1 font-mono lowercase markdown-edit-code-block-label';
-    label.textContent = currentLanguage;
     header.appendChild(label);
 
     const body = document.createElement('div');
     body.className = 'overflow-x-auto rounded-md border border-border bg-background p-4 text-sm markdown-edit-code-block-body';
     body.setAttribute('data-streamdown', 'code-block-body');
 
-    const editor = createEditableCodeEditor({
-      language: currentLanguage,
-      text: node.textContent || '',
-      onChange: (text) => replaceCodeBlockText(view, getPos, currentNode, text),
+    const editor = createCodeEditor({
+      language,
+      value: node.textContent || '',
+      onChange: (nextValue) => replaceCodeBlockText(view, getPos, nextValue),
     });
 
     body.appendChild(editor.root);
-    container.appendChild(header);
-    container.appendChild(body);
+    container.append(header, body);
 
-    const syncLanguage = (language: unknown) => {
-      currentLanguage = typeof language === 'string' ? language : '';
-      label.textContent = currentLanguage;
-      container.setAttribute('data-language', currentLanguage);
-      header.setAttribute('data-language', currentLanguage);
-      body.setAttribute('data-language', currentLanguage);
-      editor.root.setAttribute('data-language', currentLanguage);
-      editor.setLanguage(currentLanguage);
+    const syncLanguage = (nextLanguage: string) => {
+      language = normalizeLanguage(nextLanguage);
+      label.textContent = language;
+      container.setAttribute('data-language', language);
+      header.setAttribute('data-language', language);
+      body.setAttribute('data-language', language);
+      editor.setLanguage(language);
     };
 
-    syncLanguage(currentLanguage);
+    syncLanguage(language);
 
     return {
       dom: container,
-      update(updatedNode) {
+      update(updatedNode: CodeBlockNode) {
         if (updatedNode.type.name !== 'code_block') return false;
-        const nextLanguage = updatedNode.attrs.language;
-        if (nextLanguage === 'mermaid' || nextLanguage === 'excalidraw') return false;
-
-        currentNode = updatedNode;
-        syncLanguage(nextLanguage);
-        editor.setText(updatedNode.textContent || '');
+        syncLanguage(normalizeLanguage(updatedNode.attrs.language));
+        editor.setValue(updatedNode.textContent || '');
         return true;
       },
       stopEvent(event) {
@@ -307,96 +484,6 @@ export function createEditableCodeBlockView(): NodeViewConstructor {
         return true;
       },
       destroy() {
-        editor.destroy();
-      },
-    };
-  };
-}
-
-export function createEditableMermaidBlockView(): NodeViewConstructor {
-  return (node, view, getPos) => {
-    let currentNode = node;
-    let renderTimer: ReturnType<typeof setTimeout> | undefined;
-    let renderRun = 0;
-
-    const container = document.createElement('div');
-    container.className = 'mermaid-preview-block markdown-edit-mermaid-block';
-    container.setAttribute('data-streamdown', 'mermaid-block');
-    container.setAttribute('contenteditable', 'false');
-
-    const header = document.createElement('div');
-    header.className = 'mermaid-preview-header';
-    const label = document.createElement('span');
-    label.className = 'mermaid-preview-label';
-    label.textContent = 'mermaid';
-    header.appendChild(label);
-
-    const editor = createEditableCodeEditor({
-      language: 'mermaid',
-      text: node.textContent || '',
-      onChange: (text) => {
-        replaceCodeBlockText(view, getPos, currentNode, text);
-        renderPreview(text);
-      },
-    });
-    editor.root.classList.add('mermaid-preview-source', 'markdown-edit-mermaid-source');
-
-    const previewPane = document.createElement('div');
-    previewPane.className = 'mermaid-preview-surface markdown-edit-mermaid-preview-surface';
-
-    container.appendChild(header);
-    container.appendChild(editor.root);
-    container.appendChild(previewPane);
-
-    function renderPreview(text: string) {
-      if (renderTimer) clearTimeout(renderTimer);
-      const run = ++renderRun;
-
-      if (!text.trim()) {
-        previewPane.innerHTML = '<div class="mermaid-preview-loading">Enter mermaid code...</div>';
-        return;
-      }
-
-      renderTimer = setTimeout(async () => {
-        const isDark = document.body.classList.contains('vscode-dark') ||
-                       document.body.classList.contains('vscode-high-contrast');
-        if (!mermaidInitialized) ensureMermaidInit(isDark);
-
-        try {
-          const id = `mermaid-ed-${++mermaidIdCounter}`;
-          const { svg } = await mermaidLib.render(id, text);
-          if (run === renderRun) previewPane.innerHTML = svg;
-        } catch {
-          if (run === renderRun) {
-            previewPane.innerHTML = '<div class="mermaid-preview-error">Mermaid render error</div>';
-          }
-        }
-      }, 600);
-    }
-
-    renderPreview(node.textContent || '');
-
-    return {
-      dom: container,
-      update(updatedNode) {
-        if (updatedNode.type.name !== 'code_block') return false;
-        if (updatedNode.attrs.language !== 'mermaid') return false;
-
-        currentNode = updatedNode;
-        const nextText = updatedNode.textContent || '';
-        editor.setText(nextText);
-        renderPreview(nextText);
-        return true;
-      },
-      stopEvent(event) {
-        return editor.root.contains(event.target as Node);
-      },
-      ignoreMutation() {
-        return true;
-      },
-      destroy() {
-        if (renderTimer) clearTimeout(renderTimer);
-        renderRun += 1;
         editor.destroy();
       },
     };

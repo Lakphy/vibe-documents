@@ -31,12 +31,9 @@ import { trailing } from '@milkdown/kit/plugin/trailing';
 import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
 import { $view } from '@milkdown/kit/utils';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import type { NodeViewConstructor } from '@milkdown/kit/prose/view';
-import { createRoot } from 'react-dom/client';
 import { getVsCodeApi } from './vscodeApi';
-import { ExcalidrawEditMode } from './ExcalidrawBlock';
 import { subscribe } from './messageBus';
-import { createEditableCodeBlockView, createEditableMermaidBlockView } from './editableCodeBlockNodeView';
+import { createEditableCodeBlockView } from './editableCodeBlockNodeView';
 import { resolveImageSrc } from '../src/utils';
 
 const STREAMDOWN_HEADING_CLASSES: Record<number, string> = {
@@ -54,52 +51,8 @@ const STREAMDOWN_LIST_CLASSES = {
   item: 'py-1 [&>p]:inline',
 };
 
-function createExcalidrawNodeView(): NodeViewConstructor {
-  return (node, view, getPos) => {
-    const container = document.createElement('div');
-    container.className = 'excalidraw-edit-container';
-    container.setAttribute('contenteditable', 'false');
-
-    const root = createRoot(container);
-    const initialCode = node.textContent || '{}';
-
-    root.render(
-      <ExcalidrawEditMode
-        initialCode={initialCode}
-        onChange={(newCode: string) => {
-          const pos = getPos();
-          if (pos === undefined) return;
-          const tr = view.state.tr;
-          const nodeSize = node.nodeSize;
-          const contentStart = pos + 1;
-          const contentEnd = pos + nodeSize - 1;
-          tr.replaceWith(contentStart, contentEnd, newCode ? view.state.schema.text(newCode) : []);
-          view.dispatch(tr);
-        }}
-      />
-    );
-
-    return {
-      dom: container,
-      update(updatedNode) {
-        if (updatedNode.type.name !== 'code_block') return false;
-        if (updatedNode.attrs.language !== 'excalidraw') return false;
-        return true;
-      },
-      stopEvent() { return true; },
-      ignoreMutation() { return true; },
-      destroy() { root.unmount(); },
-    };
-  };
-}
-
 const codeBlockNodeView = $view(codeBlockSchema.node, () => {
-  return (node, view, getPos, decorations, innerDecorations) => {
-    const lang = node.attrs.language;
-    if (lang === 'mermaid') return createEditableMermaidBlockView()(node, view, getPos, decorations, innerDecorations);
-    if (lang === 'excalidraw') return createExcalidrawNodeView()(node, view, getPos, decorations, innerDecorations);
-    return createEditableCodeBlockView()(node, view, getPos, decorations, innerDecorations);
-  };
+  return createEditableCodeBlockView();
 });
 
 const tableNodeView = $view(tableSchema.node, () => {

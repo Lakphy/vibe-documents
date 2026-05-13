@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useIsDark } from './ThemeContext';
 
 const ExcalidrawComponent = lazy(() =>
@@ -95,72 +95,4 @@ export function ExcalidrawRenderer({ code, isIncomplete }: ExcalidrawRendererPro
 
 export function ExcalidrawBlock({ data }: { data: string }) {
   return <ExcalidrawRenderer code={data} isIncomplete={false} language="excalidraw" />;
-}
-
-/** 编辑模式：可编辑的 Excalidraw 画布（用于 Milkdown） */
-interface ExcalidrawEditModeProps {
-  initialCode: string;
-  onChange: (code: string) => void;
-}
-
-export function ExcalidrawEditMode({ initialCode, onChange }: ExcalidrawEditModeProps) {
-  const isDark = useIsDark();
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const isInternalChange = useRef(false);
-
-  const sceneData = useMemo(() => {
-    try {
-      const parsed = JSON.parse(initialCode);
-      return {
-        elements: parsed.elements || [],
-        appState: {
-          ...parsed.appState,
-          viewBackgroundColor: 'transparent',
-        },
-        files: parsed.files || {},
-      };
-    } catch {
-      return { elements: [], appState: { viewBackgroundColor: 'transparent' }, files: {} };
-    }
-  }, [initialCode]);
-
-  const handleChange = useCallback((elements: readonly any[], appState: any, files: any) => {
-    if (isInternalChange.current) return;
-    isInternalChange.current = true;
-    try {
-      const data = JSON.stringify({ elements, appState: { viewBackgroundColor: 'transparent' }, files }, null, 2);
-      onChangeRef.current(data);
-    } finally {
-      setTimeout(() => { isInternalChange.current = false; }, 100);
-    }
-  }, []);
-
-  return (
-    <>
-      <div className="excalidraw-header">
-        <span className="font-mono">excalidraw</span>
-      </div>
-      <div className="excalidraw-canvas-wrap">
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-cursor-text-tertiary)' }}>
-            Loading Excalidraw...
-          </div>
-        }>
-          <ExcalidrawComponent
-            initialData={sceneData}
-            viewModeEnabled={false}
-            theme={isDark ? 'dark' : 'light'}
-            onChange={handleChange}
-            UIOptions={{
-              canvasActions: {
-                changeViewBackgroundColor: false,
-                toggleTheme: false,
-              },
-            }}
-          />
-        </Suspense>
-      </div>
-    </>
-  );
 }
