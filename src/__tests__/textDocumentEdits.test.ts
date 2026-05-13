@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { createTextDocumentEdit } from '../textDocumentEdits';
+import { createTextDocumentEdit, applyTextDocumentContent } from '../textDocumentEdits';
 
 function createDocument(content: string): vscode.TextDocument {
   return {
@@ -44,5 +44,22 @@ describe('textDocumentEdits', () => {
     expect(result.hasChanges).toBe(true);
     expect(edits.length).toBeGreaterThan(0);
     expect(edits.every((edit: any) => edit.type !== 'replace')).toBe(true);
+  });
+
+  it('applyTextDocumentContent 无变化时直接返回 true，不调用 applyEdit', async () => {
+    const applyEditSpy = vi.spyOn(vscode.workspace, 'applyEdit');
+    applyEditSpy.mockClear();
+    const result = await applyTextDocumentContent(createDocument('# same'), '# same');
+    expect(result).toBe(true);
+    expect(applyEditSpy).not.toHaveBeenCalled();
+  });
+
+  it('applyTextDocumentContent 有变化时调用 vscode.workspace.applyEdit', async () => {
+    const applyEditSpy = vi
+      .spyOn(vscode.workspace, 'applyEdit')
+      .mockResolvedValue(true as unknown as boolean);
+    const result = await applyTextDocumentContent(createDocument('# Hello'), '# Hello World');
+    expect(applyEditSpy).toHaveBeenCalledTimes(1);
+    expect(result).toBe(true);
   });
 });

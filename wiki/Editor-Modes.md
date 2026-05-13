@@ -42,7 +42,7 @@ Streamdown 顶层 props 包括：
   components={components}
   plugins={plugins}
   mermaid={mermaidOptions}            // 仅传递主题配置给内置 mermaid 主题
-  shikiTheme={CODE_HIGHLIGHT_THEMES}  // ['github-light', 'github-dark']
+  shikiTheme={CODE_HIGHLIGHT_THEMES}  // ['vitesse-light', 'vitesse-dark']
   icons={lucideIcons}
 >
   {content}
@@ -59,7 +59,7 @@ Streamdown 顶层 props 包括：
 
 ### 代码高亮双主题
 
-Shiki 配置 `['github-light', 'github-dark']`。CSS（`webview/styles/main.css`）根据 `<html>` 上的 `vscode-light` / `vscode-dark` 类切换显示哪一套高亮 DOM。
+Shiki 主题来自 `markdownPreviewConfig.ts` 的常量 `CODE_HIGHLIGHT_THEMES = ['vitesse-light', 'vitesse-dark']`。CSS（`webview/styles/main.css`）根据 `<html>` / `<body>` 上的 `vscode-light` / `vscode-dark` / `vscode-high-contrast` 类切换显示哪一套高亮 DOM（`.shiki-light` / `.shiki-dark`）。
 
 ---
 

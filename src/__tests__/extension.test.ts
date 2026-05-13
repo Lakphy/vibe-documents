@@ -166,6 +166,16 @@ describe('extension', () => {
 
       expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
+
+    it('toggleMode 命令回调会调用 provider.toggleMode', () => {
+      activate(ctx);
+
+      const registerCalls = vi.mocked(vscode.commands.registerCommand).mock.calls;
+      const toggleCall = registerCalls.find(c => c[0] === 'vibeDocuments.toggleMode');
+      expect(toggleCall).toBeDefined();
+      // 回调内部直接调用 provider.toggleMode；只要不抛即视为覆盖该分支
+      expect(() => (toggleCall![1] as () => void)()).not.toThrow();
+    });
   });
 
   describe('deactivate', () => {

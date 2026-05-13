@@ -15,9 +15,9 @@
 | **双向同步** | Webview 编辑通过增量 `WorkspaceEdit` 实时写回；文件变更实时推送到 Webview |
 | **Mermaid 图表** | 流程图、时序图、甘特图等，支持暗色主题适配 |
 | **KaTeX 数学公式** | 行内 `$...$` 和行间 `$$...$$` |
-| **Shiki 代码高亮** | github-light / github-dark 双主题，自动跟随 VS Code 主题 |
+| **Shiki 代码高亮** | vitesse-light / vitesse-dark 双主题，自动跟随 VS Code 主题（通过 `.shiki-light` / `.shiki-dark` 类选择） |
 | **CJK 排版优化** | 中日韩文本换行和间距优化 |
-| **搜索高亮** | 基于 CSS Custom Highlights API 的 DOM 搜索/替换 |
+| **搜索高亮** | Markdown 预览/编辑模式基于 CSS Custom Highlights API 的 DOM 搜索；CSV 内置独立搜索/替换面板 |
 
 ---
 

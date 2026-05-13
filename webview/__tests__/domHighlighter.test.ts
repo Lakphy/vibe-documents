@@ -113,6 +113,13 @@ describe('findMatches', () => {
     const matches = findMatches(container, 'alpha', defaultOpts);
     expect(matches).toHaveLength(2);
   });
+
+  it('零宽正则匹配不会陷入死循环（lastIndex 自增）', () => {
+    container = makeContainer('<p>abc</p>');
+    // \b 是零宽匹配，依赖 lastIndex++ 续行
+    const matches = findMatches(container, '\\b', { caseSensitive: true, wholeWord: false, useRegex: true });
+    expect(Array.isArray(matches)).toBe(true);
+  });
 });
 
 describe('applyHighlights', () => {

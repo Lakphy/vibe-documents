@@ -22,7 +22,7 @@
 
 ### 激活事件
 
-`package.json` 中声明 6 个 `activationEvents`，VS Code 在任一触发时激活扩展：
+`package.json` 中声明 8 个 `activationEvents`，VS Code 在任一触发时激活扩展：
 
 - `onLanguage:markdown`
 - `onLanguage:csv`
@@ -79,11 +79,11 @@ vscode.languages.registerCodeLensProvider(
 
 | 命令 ID | ViewColumn | 备注 |
 |--------|------------|------|
-| `vibeDocuments.showPreview` | `Active` | Markdown 在当前列打开 |
-| `vibeDocuments.showPreviewToSide` | `Beside` | Markdown 在侧边列打开（注册了 `Ctrl/Cmd+Shift+V` 快捷键） |
-| `vibeDocuments.showExcalidrawPreview` | `Active` | 触发条件 `resourceExtname == .excalidraw` |
-| `vibeDocuments.showCsvPreview` | `Active` | 触发条件 `resourceExtname == .csv` |
-| `vibeDocuments.toggleMode` | — | 调 `provider.toggleMode()` 切换 Markdown 模式 |
+| `vibeDocuments.showPreview` | `Active` | Markdown 在当前编辑器列打开（注册了 `Ctrl/Cmd+Shift+V` 快捷键，`when: editorLangId == markdown`） |
+| `vibeDocuments.showPreviewToSide` | `Beside` | Markdown 在侧边列打开（无内置快捷键，可通过命令面板调用） |
+| `vibeDocuments.showExcalidrawPreview` | `Active` | 触发条件 `resourceExtname == .excalidraw`（注册了 `Ctrl/Cmd+Shift+V`） |
+| `vibeDocuments.showCsvPreview` | `Active` | 触发条件 `resourceExtname == .csv`（注册了 `Ctrl/Cmd+Shift+V`） |
+| `vibeDocuments.toggleMode` | — | 调 `provider.toggleMode()` 切换 Markdown 模式（`when: vibeDocumentsPreviewFocused`） |
 
 四个 `showXxx` 命令统一走辅助函数 `openWithVibeEditor(uri, column)`：
 

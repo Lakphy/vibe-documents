@@ -22,14 +22,17 @@
 ### vitest.config.ts
 
 ```typescript
+import { defineConfig } from 'vitest/config';
+
 export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    include: ['src/**/*.test.ts', 'webview/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
     css: false,
     alias: {
-      vscode: './test/__mocks__/vscode.ts',
+      vscode: new URL('./test/__mocks__/vscode.ts', import.meta.url).pathname,
     },
   },
 });
@@ -37,8 +40,9 @@ export default defineConfig({
 
 关键配置：
 - `environment: 'jsdom'` — 所有测试运行在 jsdom 中
+- `include` — 仅匹配 `src/`、`webview/`、`test/` 下的 `*.test.{ts,tsx}` 文件
 - `css: false` — 跳过 CSS 解析
-- `alias.vscode` — 将 `import * as vscode from 'vscode'` 重定向到 Mock
+- `alias.vscode` — 将 `import * as vscode from 'vscode'` 重定向到本地 Mock 的绝对路径
 
 ---
 

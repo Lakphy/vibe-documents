@@ -69,7 +69,7 @@ npm run dev
 
 2. **快捷键**：
 
-   * `Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）— 在侧边打开预览
+   * `Ctrl+Shift+V`（Mac: `Cmd+Shift+V`）— 在当前编辑器列打开预览（对应 `vibeDocuments.showPreview`）
 
 3. **编辑器标题栏**：打开 `.md` 文件后，点击编辑器右上角的预览图标
 
@@ -145,7 +145,7 @@ CSV 编辑器功能：
 ### 代码块
 
 ```javascript
-console.log('Shiki 高亮，支持 github-light / github-dark 双主题');
+console.log('Shiki 高亮，支持 vitesse-light / vitesse-dark 双主题');
 ```
 
 ### 数学公式
@@ -182,15 +182,17 @@ graph TD
 
 ## 快捷键速查
 
-| 操作            | Windows/Linux                  | macOS         |
-| ------------- | ------------------------------ | ------------- |
-| Markdown 预览   | `Ctrl+Shift+V`                 | `Cmd+Shift+V` |
-| Excalidraw 预览 | `Ctrl+Shift+V`（.excalidraw 文件） | `Cmd+Shift+V` |
-| CSV 预览        | `Ctrl+Shift+V`（.csv 文件）        | `Cmd+Shift+V` |
-| 切换模式          | `Ctrl+Shift+E`                 | `Cmd+Shift+E` |
-| CSV 搜索        | `Ctrl+F`                       | `Cmd+F`       |
-| CSV 撤销        | `Ctrl+Z`                       | `Cmd+Z`       |
-| CSV 重做        | `Ctrl+Shift+Z`                 | `Cmd+Shift+Z` |
+| 操作            | Windows/Linux                  | macOS         | 作用域 / when                   |
+| ------------- | ------------------------------ | ------------- | -------------------------- |
+| Markdown 预览（当前列） | `Ctrl+Shift+V`                 | `Cmd+Shift+V` | `editorLangId == markdown` |
+| Excalidraw 预览 | `Ctrl+Shift+V`                 | `Cmd+Shift+V` | `resourceExtname == .excalidraw` |
+| CSV 预览        | `Ctrl+Shift+V`                 | `Cmd+Shift+V` | `resourceExtname == .csv` |
+| 切换 Preview / WYSIWYG     | `Ctrl+Shift+E`                 | `Cmd+Shift+E` | `vibeDocumentsPreviewFocused` |
+| CSV 搜索        | `Ctrl+F`                       | `Cmd+F`       | CSV 编辑器内部拦截 |
+| Markdown 搜索   | `Ctrl+F`                       | `Cmd+F`       | Markdown 预览/编辑器内部拦截 |
+| 保存           | `Ctrl+S`                       | `Cmd+S`       | Webview 内部 `useSaveShortcut` |
+| CSV 撤销        | `Ctrl+Z`                       | `Cmd+Z`       | CSV 编辑器内部 |
+| CSV 重做        | `Ctrl+Shift+Z`                 | `Cmd+Shift+Z` | CSV 编辑器内部 |
 
 ***
 

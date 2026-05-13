@@ -90,4 +90,19 @@ describe('messageBus', () => {
 
     addSpy.mockRestore();
   });
+
+  it('只取消其中一个订阅者时，其它订阅者仍可继续接收', () => {
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    const unsub1 = subscribe('update', h1);
+    subscribe('update', h2);
+
+    unsub1();
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'update', content: 'x' },
+    }));
+
+    expect(h1).not.toHaveBeenCalled();
+    expect(h2).toHaveBeenCalledTimes(1);
+  });
 });

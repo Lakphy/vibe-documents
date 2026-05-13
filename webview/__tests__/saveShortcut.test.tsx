@@ -67,4 +67,15 @@ describe('useSaveShortcut', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(vscodeApi.postMessage).not.toHaveBeenCalled();
   });
+
+  it('provider 返回 undefined 时回退到无 content 的 save', () => {
+    renderHook(() => {
+      useSaveShortcut();
+      useSaveContentProvider(() => undefined);
+    });
+
+    dispatchSaveShortcut({ metaKey: true });
+
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith({ type: 'save' });
+  });
 });

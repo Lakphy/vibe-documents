@@ -105,4 +105,25 @@ describe('scrollToMatch', () => {
     scrollToMatch({ ranges: [range] });
     expect(scrollSpy).not.toHaveBeenCalled();
   });
+
+  it('当 range 缺少 getBoundingClientRect 时直接调用 scrollIntoView', () => {
+    const div = document.createElement('div');
+    div.textContent = 'hello';
+    document.body.appendChild(div);
+    const scrollSpy = vi.fn();
+    (div as any).scrollIntoView = scrollSpy;
+
+    const textNode = div.firstChild as Text;
+    const range = document.createRange();
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, textNode.length);
+    (range as any).getBoundingClientRect = undefined;
+
+    scrollToMatch({ ranges: [range] });
+    expect(scrollSpy).toHaveBeenCalled();
+  });
+
+  it('空 ranges 时直接返回，不抛错', () => {
+    expect(() => scrollToMatch({ ranges: [] })).not.toThrow();
+  });
 });

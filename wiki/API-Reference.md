@@ -18,6 +18,7 @@
 | 标题 | Vibe: Open Markdown Preview |
 | 图标 | `$(open-preview)` |
 | 参数 | `uri?: vscode.Uri` |
+| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V`（`when: editorLangId == markdown`） |
 | 内部行为 | `vscode.openWith(uri, viewType, { viewColumn: Active })` |
 
 ### `vibeDocuments.showPreviewToSide`
@@ -30,7 +31,7 @@
 | 标题 | Vibe: Open Markdown Preview to the Side |
 | 图标 | `$(open-preview)` |
 | 参数 | `uri?: vscode.Uri` |
-| 快捷键 | `Ctrl+Shift+V` / `Cmd+Shift+V`（`when: editorLangId == markdown`） |
+| 快捷键 | （无，仅可通过命令面板调用） |
 | 内部行为 | `vscode.openWith(uri, viewType, { viewColumn: Beside })` |
 
 ### `vibeDocuments.showExcalidrawPreview`
@@ -261,13 +262,15 @@ class PreviewCodeLensProvider implements vscode.CodeLensProvider {
 }
 ```
 
-每个文件返回单个 CodeLens，标题与命令依据 `fileType`：
+构造函数参数 `fileType` 默认值为 `'markdown'`。每个文件返回单个 CodeLens（范围固定 `Range(0,0,0,0)`），标题与命令依据 `fileType`：
 
 | fileType | title | command |
 |----------|-------|---------|
-| markdown | "Open with Vibe Preview" | `vibeDocuments.showPreview` |
-| csv | "Open with Vibe CSV Editor" | `vibeDocuments.showCsvPreview` |
-| excalidraw | "Open with Vibe Excalidraw Editor" | `vibeDocuments.showExcalidrawPreview` |
+| markdown | `$(open-preview)  Open Vibe Preview` | `vibeDocuments.showPreview` |
+| csv | `$(open-preview)  Open CSV Preview` | `vibeDocuments.showCsvPreview` |
+| excalidraw | `$(open-preview)  Open Excalidraw Editor` | `vibeDocuments.showExcalidrawPreview` |
+
+CodeLens 的 `arguments` 始终为 `[document.uri]`。
 
 ---
 

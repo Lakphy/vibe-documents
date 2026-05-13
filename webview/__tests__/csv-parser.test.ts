@@ -131,4 +131,14 @@ describe('parseAndSplit', () => {
     expect(reparsed.headers).toEqual(headers);
     expect(reparsed.rows).toEqual(rows);
   });
+
+  it('单独 CR 换行（无 LF）也作为换行处理', () => {
+    const result = parseAndSplit('a,b\r1,2');
+    expect(result.headers).toEqual(['a', 'b']);
+    expect(result.rows).toEqual([['1', '2']]);
+  });
+
+  it('仅含空白（空格/换行）的输入返回空结果', () => {
+    expect(parseAndSplit('   \n   \n')).toEqual({ headers: [], rows: [] });
+  });
 });

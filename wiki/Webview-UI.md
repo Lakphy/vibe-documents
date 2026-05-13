@@ -81,7 +81,7 @@ const visitedModes = useRef(new Set<EditorMode>(['preview']));
 
 ```typescript
 const plugins = useMemo(() => ({
-  code: codePlugin,   // Shiki 代码高亮，github-light/github-dark 双主题
+  code: codePlugin,   // Shiki 代码高亮，vitesse-light/vitesse-dark 双主题
   math,               // KaTeX
   cjk,                // CJK 排版优化
   renderers: [
